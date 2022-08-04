@@ -47,7 +47,7 @@ class TzolkinGame {
         this.turnType = "unknown";
         this.turnPlacedWorkers = 0;
         this.firstPlayer = 0;
-        this.firstPlayerSpace = false;
+        this.firstPlayerSpace = -1;
         this.players = [
             new Player(0, "IndianRed"),
             new Player(0, "SteelBlue")
@@ -166,8 +166,9 @@ class TzolkinGame {
         }
     }
     setFirstPlayer(playerNumber, godMode) {
+        //Set first player (-1 is not taken)
         if (godMode) {
-            this.firstPlayer = playerNumber;
+            this.firstPlayerSpace = playerNumber;
         }
     }
 }
@@ -410,8 +411,8 @@ class InfoSpace extends TileBase {
     }
 }
 class FirstPlayerSpace extends TileBase {
-    constructor(game, parentDom) {
-        super(game, parentDom, "S", "");
+    constructor(game, parentDom, bottomText = "") {
+        super(game, parentDom, "S", bottomText);
         //onclick
         this.dom.onclick = x => {
             let newFirstPlayerSpace = this.game.firstPlayerSpace + 1;
@@ -425,11 +426,10 @@ class FirstPlayerSpace extends TileBase {
         this.refresh();
     }
     refresh() {
-        if (this.game.firstPlayer === -1) {
-            this.dom.style.backgroundColor = "white";
+        if (this.game.firstPlayerSpace === -1) {
         }
         else {
-            this.dom.style.backgroundColor = this.game.players[this.game.firstPlayer].color;
+            this.dom.style.backgroundColor = this.game.players[this.game.firstPlayerSpace].color;
         }
     }
 }
@@ -441,13 +441,13 @@ let i;
 area = document.getElementById("general-area");
 new InfoSpace(game, area, "round", "of 27 rounds");
 new InfoSpace(game, area, "firstPlayer", "first player");
-new InfoSpace(game, area, "turn", "turn");
+new InfoSpace(game, area, "turn", "player's turn");
 new InfoSpace(game, area, "skulls", "skulls").dom.classList.add("skull-color");
-new InfoSpace(game, area, "bribe", "bribe");
 let firstPlayerSpace = document.getElementById("first-player-name");
 firstPlayerSpace.style.display = "block";
 area.appendChild(firstPlayerSpace);
-new FirstPlayerSpace(game, area);
+new FirstPlayerSpace(game, area, "first player");
+new InfoSpace(game, area, "bribe", "bribe").dom.classList.add("corn-color");
 //Build wheel P
 area = document.getElementById("P-wheel-input");
 rewards = ["", "3c", "4c", "5c/2w", "7c/3w", "9c/4w", "~", "~"];
