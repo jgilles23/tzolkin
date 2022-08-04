@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<!--HTML and basic JavaScript copied from https://developer.mozilla.org/en-US/docs/Games/Tutorials/2D_Breakout_game_pure_JavaScript/Create_the_Canvas_and_draw_on_it-->
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <title>Tzolkin Solver</title>
+    <!-- <link rel="icon" type="image/x-icon" href="./icons/favicon.ico"> -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <style>
+        * {
+            --gridWidth: 90vmin;
+            /* font-family: 'Courier New', monospace; */
+            font-family: 'Arial';
+            padding: 0;
+            margin: 0;
+            /* text-align: center; */
+            -webkit-user-select: none;
+            /* Safari */
+            -moz-user-select: none;
+            /* Firefox */
+            -ms-user-select: none;
+            /* IE10+/Edge */
+            /* user-select: none; */
+            /* Standard */
+            /* touch-
+            action: pan-y; */
+        }
+
+        .title {
+            margin: auto;
+            font-size: 7vmin;
+            text-align: center;
+            width: var(--gridWidth)
+        }
+
+        .menu-bar {
+            display: flex;
+            margin: auto;
+            width: var(--gridWidth);
+            justify-content: right;
+        }
+
+        .menu-sub {
+            display: flex;
+        }
+
+        .menu-button {
+            border: solid black;
+            font-size: 2vmin;
+            padding: 0.5vmin;
+            margin-left: 1vmin;
+        }
+
+        .menu-counter {
+            display: inline-block;
+            width: 3vmin;
+            border: solid black;
+            border-radius: 20%;
+            font-size: 2vmin;
+            padding-top: 0.5vmin;
+            padding-bottom: 0.5vmin;
+            margin-right: 1vmin;
+            text-align: center;
+        }
+
+        .input-area {
+            margin: auto;
+            margin-top: 1vmin;
+            /* display: flex; */
+            width: var(--gridWidth);
+            /* height: var(--gridWidth); */
+            /* background-color: lightgray; */
+        }
+
+        .area-name {
+            font-size: 1.8vmin;
+        }
+
+        .grid {
+            margin-bottom: 0.5vmin;
+            display: grid;
+            row-gap: 0.2vmin;
+            column-gap: 0.5vmin;
+            grid-auto-flow: column;
+            grid-auto-columns: minmax(0, 1fr);
+        }
+
+        .P-grid {
+            grid-template-rows: repeat(3, auto);
+        }
+
+        .C-grid {
+            grid-template-rows: repeat(2, auto);
+        }
+
+        .tile {
+            border: solid black 0.3vmin;
+            padding: 0.5vmin;
+            /* border-radius: 20%; */
+            font-size: 1.8vmin;
+            line-height: 0.8;
+            justify-content: center;
+            align-content: center;
+            position: relative;
+            text-align: center;
+        }
+
+        .tile-bottom-text {
+            font-size: 1.3vmin;
+        }
+
+        .score-color {
+            background-color: mediumorchid;
+        }
+
+        .wood-color {
+            background-color: Peru;
+        }
+
+        .corn-color {
+            background-color: gold;
+        }
+
+        .stone-color {
+            background-color: grey;
+        }
+
+        .gold-color {
+            background-color: goldenrod;
+        }
+
+        .skull-color {
+            background-color: lightblue;
+        }
+
+        .worker-color {
+            background-color: lightgray;
+        }
+
+        .religion-0-color {
+            background-color: burlywood;
+        }
+
+        .religion-1-color {
+            background-color: lightgoldenrodyellow;
+        }
+
+        .religion-2-color {
+            background-color: lightgreen;
+        }
+
+        .template {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="main">
+        <!-- Content -->
+        <div class="title">Tzolkin Solver</div>
+        <div class="menu-bar">
+            <span class="submenu">
+                <!--Right submenu-->
+                <span class="menu-button" id="test-button">Test Button</span>
+            </span>
+        </div>
+        <!--Primary content for input/output-->
+        <div class="input-area" id="input-area">
+            <!--General-->
+            <span class="grid" id="general-area">
+                <div>General</div>
+            </span>
+            <!--Wheels-->
+            <span class="grid P-grid" id="P-wheel-input">
+                <div class="area-name">Palanque</div>
+                <div></div>
+                <div></div>
+            </span>
+            <span class="grid" id="Y-wheel-input">
+                <div class="area-name">Yaxchilan</div>
+            </span>
+            <span class="grid" id="T-wheel-input">
+                <div class="area-name">Tikal</div>
+            </span>
+            <span class="grid" id="U-wheel-input">
+                <div class="area-name">Uxmal</div>
+            </span>
+            <span class="grid C-grid" id="C-wheel-input">
+                <div class="area-name">Chichen Itza</div>
+                <div></div>
+            </span>
+            <!--Player area-->
+            <span id="player-0-area">
+                <span class="grid" id="player-0-resources">
+                    <div class="area-name">Player 0</div>
+                </span>
+                <span class="grid" id="player-0-religion-technology">
+                    <div></div>
+                </span>
+            </span>
+        </div>
+        <!--Pop up for input of player numbers-->
+
+        <!-- Templates -->
+        <div class="template">
+            <span class="tile" id="tile-template">
+                <span class="tile-top-text"></span>
+                <br>
+                <span class="tile-bottom-text"></span>
+            </span>
+            <div class="area-name" id="first-player-name">First Player</div>
+        </div>
+        <!-- Scripts -->
+        <script src="./tzolkin.js"></script>
+    </div>
+
+</body>
+
+</html>
