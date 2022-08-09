@@ -1,46 +1,32 @@
-var __extends = (this && this.__extends) || (function () {
-    var extendStatics = function (d, b) {
-        extendStatics = Object.setPrototypeOf ||
-            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
-        return extendStatics(d, b);
-    };
-    return function (d, b) {
-        if (typeof b !== "function" && b !== null)
-            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
-        extendStatics(d, b);
-        function __() { this.constructor = d; }
-        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-    };
-})();
+"use strict";
 console.log("Tzolkin Solver is Running.");
 //Base variables
-var LocalStorageHandler = /** @class */ (function () {
-    function LocalStorageHandler(prefix) {
+class LocalStorageHandler {
+    constructor(prefix) {
         //Build and load the current local storage
         this.prefix = prefix;
         //Load the meta-data if it already exists; otherwise create the meta data
-        var metaDataString = localStorage.getItem(this.prefix + "_meta");
+        let metaDataString = localStorage.getItem(this.prefix + "_meta");
         if (metaDataString === null) {
             this.currentPos = -1; //Nothing has been written
             this.maxPos = -1; //Nothing has been written
             this.saveMetaData();
         }
         else {
-            var metaData = JSON.parse(metaDataString);
+            let metaData = JSON.parse(metaDataString);
             this.currentPos = metaData["currentPos"];
             this.maxPos = metaData["maxPos"];
         }
     }
-    LocalStorageHandler.prototype.save = function (game) {
+    save(game) {
         //Iterate current position by 1 and save
         //Delete future positions if required
-    };
-    LocalStorageHandler.prototype.saveMetaData = function () {
+    }
+    saveMetaData() {
         //Save self meta data
         localStorage.setItem(this.prefix + "_meta", JSON.stringify(this));
-    };
-    LocalStorageHandler.prototype.undo = function (game) {
+    }
+    undo(game) {
         //Step current position back by 1 then load into the game provided
         if (this.currentPos < 0) {
             console.log("Cannot undo, no positions have been saved.");
@@ -52,27 +38,26 @@ var LocalStorageHandler = /** @class */ (function () {
             this.currentPos -= 1;
             this.load(game);
         }
-    };
-    LocalStorageHandler.prototype.load = function (game) {
+    }
+    load(game) {
         //Pull the current game from the localStorage
         //Override the game data with the new data
         if (this.currentPos < 0) {
             console.log("Cannot load, no positions have been saved.");
             return;
         }
-        var gameString = localStorage.getItem("".concat(this.prefix, "-").concat(this.currentPos));
+        let gameString = localStorage.getItem(`${this.prefix}-${this.currentPos}`);
         if (gameString === null) {
             throw "Expected to load game string, got nothing.";
         }
-        var gameData = JSON.parse(gameString);
-    };
-    LocalStorageHandler.prototype.deleteAll = function () {
+        let gameData = JSON.parse(gameString);
+    }
+    deleteAll() {
         //Remove all data saved in local storage & reset self
-    };
-    return LocalStorageHandler;
-}());
-var Player = /** @class */ (function () {
-    function Player(id, color) {
+    }
+}
+class Player {
+    constructor(id, color) {
         this.id = id;
         this.color = color;
         this.religion = [1, 1, 1];
@@ -87,29 +72,25 @@ var Player = /** @class */ (function () {
         this.stone = 0;
         this.gold = 0;
     }
-    Player.prototype.hasArchitectureSavingsTech = function () {
+    hasArchitectureSavingsTech() {
         return this.technology[2] > 3;
-    };
-    return Player;
-}());
-var Return = /** @class */ (function () {
-    function Return(f, string, object) {
-        if (string === void 0) { string = ""; }
-        if (object === void 0) { object = {}; }
+    }
+}
+class Return {
+    constructor(f, string = "", object = {}) {
         this.f = f;
         this.string = string;
         this.object = object;
     }
-    return Return;
-}());
-var Building = /** @class */ (function () {
-    function Building(game, costs, rewards, color, buildingNumber) {
+}
+class Building {
+    constructor(game, costs, rewards, color, buildingNumber) {
         this.game = game;
         this.costs = costs;
         this.rewards = rewards;
         this.color = color;
         this.id = buildingNumber;
-        var player = this.game.players[this.game.turn];
+        let player = this.game.players[this.game.turn];
         this.pairs = [
             [this.costs.corn, player.corn, "corn"],
             [this.costs.wood, player.wood, "wood"],
@@ -117,11 +98,10 @@ var Building = /** @class */ (function () {
             [this.costs.gold, player.gold, "gold"]
         ];
     }
-    Building.prototype.testBuildResources = function (architecture) {
-        var player = this.game.players[this.game.turn];
-        var resourceDeficit = 0;
-        for (var _i = 0, _a = this.pairs; _i < _a.length; _i++) {
-            var _b = _a[_i], cost = _b[0], inventory = _b[1], resourceName = _b[2];
+    testBuildResources(architecture) {
+        let player = this.game.players[this.game.turn];
+        let resourceDeficit = 0;
+        for (let [cost, inventory, resourceName] of this.pairs) {
             if (cost !== undefined && cost > inventory) {
                 resourceDeficit += cost - player.corn;
             }
@@ -139,20 +119,19 @@ var Building = /** @class */ (function () {
         else {
             return false;
         }
-    };
-    Building.prototype.performBuildResources = function (architecture, savedResource) {
-        var player = this.game.players[this.game.turn];
+    }
+    performBuildResources(architecture, savedResource) {
+        let player = this.game.players[this.game.turn];
         //Actually spend the resources to build something
         //testBuildResources must be run first otherwise something might be built without having the required resources
         //See if architecture should be offered
         if (architecture && player.hasArchitectureSavingsTech()) {
         }
-    };
-    Building.prototype.testBuildCorn = function (architecture) {
-        var player = this.game.players[this.game.turn];
-        var cornCost = 0;
-        for (var _i = 0, _a = this.pairs; _i < _a.length; _i++) {
-            var _b = _a[_i], cost = _b[0], inventory = _b[1], resourceName = _b[2];
+    }
+    testBuildCorn(architecture) {
+        let player = this.game.players[this.game.turn];
+        let cornCost = 0;
+        for (let [cost, inventory, resourceName] of this.pairs) {
             if (cost !== undefined) {
                 cornCost += cost * 2; //Spend 2 corn per resource
             }
@@ -172,17 +151,16 @@ var Building = /** @class */ (function () {
         else {
             return false;
         }
-    };
-    return Building;
-}());
-var allBuildings = [1, 2, 3, 4];
-var TzolkinGame = /** @class */ (function () {
-    function TzolkinGame(ui) {
+    }
+}
+let allBuildings = [1, 2, 3, 4];
+class TzolkinGame {
+    constructor(ui) {
         //Create a game (assume two player)
         this.P = new Array(8).fill(-1);
         this.PCorn = new Array(8).fill(0);
         this.PWood = new Array(8).fill(0);
-        for (var i = 2; i <= 5; i++) {
+        for (let i = 2; i <= 5; i++) {
             this.PWood[i] = 2;
         }
         this.Y = new Array(8).fill(-1);
@@ -211,8 +189,8 @@ var TzolkinGame = /** @class */ (function () {
         this.calculationStack.push({ name: "turnStart" });
         this.calculate();
     }
-    TzolkinGame.prototype.stringify = function () {
-        var replacer = function (key, value) {
+    stringify() {
+        let replacer = (key, value) => {
             if (key === "ui") {
                 return undefined;
             }
@@ -221,11 +199,11 @@ var TzolkinGame = /** @class */ (function () {
             }
         };
         return JSON.stringify(this, replacer);
-    };
-    TzolkinGame.prototype.getWheels = function () {
+    }
+    getWheels() {
         return [["P", this.P], ["Y", this.Y], ["T", this.T], ["U", this.U], ["C", this.C]];
-    };
-    TzolkinGame.prototype.calculate = function () {
+    }
+    calculate() {
         //Look at the calculation stack and perform the last calculation on the stack
         //Calculations should be removed from the stack when the next action is perfomred
         //Each action performed should add another calculation to the calculationStack
@@ -235,141 +213,131 @@ var TzolkinGame = /** @class */ (function () {
         //Clear the avaliable action, they will be re-calculated
         this.actions = {};
         //get the next calculation
-        var calculationIndex = this.calculationStack.length - 1;
-        var currentCalculation = this.calculationStack[calculationIndex];
+        let calculationIndex = this.calculationStack.length - 1;
+        let currentCalculation = this.calculationStack[calculationIndex];
         //Switch through the calculation types
         if (currentCalculation.name === "turnStart") {
-            var calc = currentCalculation;
+            let calc = currentCalculation;
             this.calcTurnStart();
         }
         else if (currentCalculation.name === "pickup") {
-            var calc = currentCalculation;
+            let calc = currentCalculation;
             this.calcPickup2(calc.workersPickedup);
         }
         else if (currentCalculation.name === "place") {
-            var calc = currentCalculation;
+            let calc = currentCalculation;
             this.calcPlace2(calc.workersPlaced);
         }
         else if (currentCalculation.name === "chooseAction") {
-            var calc = currentCalculation;
+            let calc = currentCalculation;
             this.calcChooseAction(calc.wheel, calc.position);
         }
         else if (currentCalculation.name === "begReligion") {
-            var calc = currentCalculation;
+            let calc = currentCalculation;
             this.calcBegReligion();
         }
         else {
             throw "Calculation not recognized";
         }
-    };
-    TzolkinGame.prototype.calcTurnStart = function () {
-        var _this = this;
+    }
+    calcTurnStart() {
         this.helpText = "Choose starting action.";
-        var player = this.players[this.turn];
+        let player = this.players[this.turn];
         this.calcPickup2(0);
         this.calcPlace2(0);
         //Calculate begging for corn option
         if (player.corn < 3 && player.religion[0] > 0 && player.religion[1] > 0 && player.religion[2] > 0) {
-            this.actions["beg"] = function () {
+            this.actions["beg"] = () => {
                 //Beg for corn
                 player.corn = 3;
                 console.log(allBuildings);
                 //Add the startover action
-                _this.calculationStack.push({ name: "turnStart" });
+                this.calculationStack.push({ name: "turnStart" });
                 //Add the beg religion calculation
-                _this.calculationStack.push({ name: "begReligion" });
+                this.calculationStack.push({ name: "begReligion" });
             };
         }
         //Calculate the pitty option
         if (Object.keys(this.actions).length === 0) {
             this.calcPity();
         }
-    };
-    TzolkinGame.prototype.calcPickup2 = function (workersPickedup) {
-        var _this = this;
+    }
+    calcPickup2(workersPickedup) {
         //Iterate through all the wheels to decide which worker to pick up
         if (workersPickedup === 0) {
             //First worker to be picked up - must be picked up
         }
         else {
             this.helpText = "Choose another worker to pick up.";
-            this.actions["end"] = function () {
+            this.actions["end"] = () => {
                 //End turn action is now avaliable
-                _this.performEndTurn();
+                this.performEndTurn();
             };
         }
-        var player = this.players[this.turn];
-        var _loop_1 = function (wheelName, wheel) {
-            var _loop_2 = function (pos) {
+        let player = this.players[this.turn];
+        //Iterate through all the wheels and positions
+        for (let [wheelName, wheel] of this.getWheels()) {
+            for (let pos = 0; pos < this.C.length; pos++) {
                 if (pos < wheel.length) {
                     //Check if player has a piece there
-                    if (wheel[pos] === this_1.turn) {
+                    if (wheel[pos] === this.turn) {
                         //Player can pickup from this location
-                        this_1.actions["".concat(wheelName).concat(pos)] = function () {
+                        this.actions[`${wheelName}${pos}`] = () => {
                             //Perform the pickup actions
                             player.workersFree += 1; //Return a worker to the player
                             wheel[pos] = -1; //Set the wheel positon to -1
                             //Add the next pickup to the stack
-                            _this.calculationStack.push({
+                            this.calculationStack.push({
                                 name: "pickup",
                                 workersPickedup: workersPickedup + 1
                             });
                             //Add the chooseAction calculation to the stack
-                            _this.calculationStack.push({
+                            this.calculationStack.push({
                                 name: "chooseAction",
                                 wheel: wheelName,
-                                position: pos
+                                position: pos,
                             });
                         };
                     }
                 }
-            };
-            for (var pos = 0; pos < this_1.C.length; pos++) {
-                _loop_2(pos);
             }
-        };
-        var this_1 = this;
-        //Iterate through all the wheels and positions
-        for (var _i = 0, _a = this.getWheels(); _i < _a.length; _i++) {
-            var _b = _a[_i], wheelName = _b[0], wheel = _b[1];
-            _loop_1(wheelName, wheel);
         }
         //Check if end turn is the only option
         if (Object.keys(this.actions).length === 0 && "end" in this.actions) {
             this.helpText = "No more workers can be picked up. Please end turn.";
         }
-    };
-    TzolkinGame.prototype.calcPlace2 = function (workersPlaced) {
-        var _this = this;
+    }
+    calcPlace2(workersPlaced) {
         //Iterate through all the wheels to decide where a worker can be placed
         if (workersPlaced === 0) {
             //First worker must be placed
         }
         else {
-            this.helpText = "Choose another placement for ".concat(workersPlaced, "+ corn.");
-            this.actions["end"] = function () {
-                _this.performEndTurn();
+            this.helpText = `Choose another placement for ${workersPlaced}+ corn.`;
+            this.actions["end"] = () => {
+                this.performEndTurn();
             };
         }
-        var player = this.players[this.turn];
+        let player = this.players[this.turn];
         //Check if ther player has free workers
         if (player.workersFree <= 0) {
             return; //Done, no new workers that can be placed
         }
-        var _loop_3 = function (wheelName, wheel) {
-            var foundOpenPosition = false;
-            var _loop_4 = function (pos) {
+        //Find the lowest numbered spot (if there are still workers free)
+        for (let [wheelName, wheel] of this.getWheels()) {
+            let foundOpenPosition = false;
+            for (let pos = 0; pos < this.C.length; pos++) {
                 if (pos < wheel.length) {
                     //Need empty spot and corn
                     if (player.corn >= pos + workersPlaced && wheel[pos] === -1) {
                         //Worker can be placed here
-                        this_2.actions["".concat(wheelName).concat(pos)] = function () {
+                        this.actions[`${wheelName}${pos}`] = () => {
                             //Place the worker
                             player.corn -= pos + workersPlaced;
                             player.workersFree -= 1;
                             wheel[pos] = player.id;
                             //Add next placement to the stack
-                            _this.calculationStack.push({
+                            this.calculationStack.push({
                                 name: "place",
                                 workersPlaced: workersPlaced + 1
                             });
@@ -378,34 +346,23 @@ var TzolkinGame = /** @class */ (function () {
                     //break to next wheel on finding an open position
                     if (wheel[pos] === -1) {
                         foundOpenPosition = true;
-                        return "break";
+                        break;
                     }
                 }
-            };
-            for (var pos = 0; pos < this_2.C.length; pos++) {
-                var state_1 = _loop_4(pos);
-                if (state_1 === "break")
-                    break;
             }
             //Break on open position
             if (foundOpenPosition) {
-                return "continue";
+                continue;
             }
-        };
-        var this_2 = this;
-        //Find the lowest numbered spot (if there are still workers free)
-        for (var _i = 0, _a = this.getWheels(); _i < _a.length; _i++) {
-            var _b = _a[_i], wheelName = _b[0], wheel = _b[1];
-            _loop_3(wheelName, wheel);
         }
         //Check the starting spot
         if (this.firstPlayerSpace === -1 && player.corn >= workersPlaced) {
             //Worker can be placed on starting position
-            this.actions["S"] = function () {
+            this.actions[`S`] = () => {
                 player.workersFree -= 1;
-                _this.firstPlayerSpace = _this.turn;
+                this.firstPlayerSpace = this.turn;
                 //Add next placement to the stack
-                _this.calculationStack.push({
+                this.calculationStack.push({
                     name: "place",
                     workersPlaced: workersPlaced + 1
                 });
@@ -415,40 +372,36 @@ var TzolkinGame = /** @class */ (function () {
         if (Object.keys(this.actions).length === 0 && "end" in this.actions) {
             this.helpText = "No more workers can be placed. Please end turn.";
         }
-    };
-    TzolkinGame.prototype.calcPity = function () {
+    }
+    calcPity() {
         throw "TODO calulate pity not yet programmed.";
-    };
-    TzolkinGame.prototype.calcBegReligion = function () {
+    }
+    calcBegReligion() {
         //This is a sub calculation, does not inherently add another calculation to the stack
-        var player = this.players[this.turn];
-        var _loop_5 = function (i) {
+        let player = this.players[this.turn];
+        //Choose the religion track to go down on
+        for (let i = 0; i < 3; i++) {
             if (player.religion[i] > 0) {
-                this_3.actions["p".concat(this_3.turn, "R").concat("ABC"[i])] = function () {
+                this.actions[`p${this.turn}R${"ABC"[i]}`] = () => {
                     //Reduce on that religion
                     player.religion[i] -= 1;
                 };
             }
-        };
-        var this_3 = this;
-        //Choose the religion track to go down on
-        for (var i = 0; i < 3; i++) {
-            _loop_5(i);
         }
-    };
-    TzolkinGame.prototype.calcChooseAction = function (wheel, pos) {
+    }
+    calcChooseAction(wheel, pos) {
         console.log("TODO Choose Action not yet implemented.");
-    };
-    TzolkinGame.prototype.refresh = function () {
+    }
+    refresh() {
         this.ui.refresh();
-    };
-    TzolkinGame.prototype.performAction = function (actionName) {
+    }
+    performAction(actionName) {
         //Perform an action
         if (actionName in this.actions) {
             //Remove the most recent calculation from the stack
             this.calculationStack.pop();
             //Clear the actions then play this action - more calculations should be added to the stack
-            var f = this.actions[actionName]; //Grab the function to be called
+            let f = this.actions[actionName]; //Grab the function to be called
             f(); //Call the function
             //Perform the next calculation in the stack - which clears the actions as a side effect
             this.calculate();
@@ -456,14 +409,14 @@ var TzolkinGame = /** @class */ (function () {
             this.refresh();
         }
         else {
-            console.log("Action \"".concat(actionName, "\" not recognized as a legal move."));
+            console.log(`Action "${actionName}" not recognized as a legal move.`);
         }
         //No refresh here, each action performed should refresh on its own
-    };
-    TzolkinGame.prototype.performEndTurn = function () {
+    }
+    performEndTurn() {
         console.log("performEndTurn TO BE BUILT");
-    };
-    TzolkinGame.prototype.placeWorker = function (playerNumber, wheel, spaceNumber, godMode) {
+    }
+    placeWorker(playerNumber, wheel, spaceNumber, godMode) {
         //Place the worker that is requested by the user
         //Perform differently in god and not god modee
         //Place the worker
@@ -472,18 +425,18 @@ var TzolkinGame = /** @class */ (function () {
             return new Return(true);
         }
         return new Return(false);
-    };
-    TzolkinGame.prototype.nextWorkerOnSpace = function (wheel, spaceNumber) {
+    }
+    nextWorkerOnSpace(wheel, spaceNumber) {
         //Calculate the next worker to go on a space
-        var x = this[wheel][spaceNumber] + 1;
+        let x = this[wheel][spaceNumber] + 1;
         if (x === this.players.length) {
             return -2;
         }
         else {
             return x;
         }
-    };
-    TzolkinGame.prototype.pickupTile = function (spaceNumber, type, godMode) {
+    }
+    pickupTile(spaceNumber, type, godMode) {
         //Pickup either a wood or a corn tile
         if (godMode) {
             if (type === "w") {
@@ -503,17 +456,17 @@ var TzolkinGame = /** @class */ (function () {
                 }
             }
         }
-    };
-    TzolkinGame.prototype.setSkull = function (spaceNumber, godMode) {
+    }
+    setSkull(spaceNumber, godMode) {
         //Set a skill on the C wheel
         if (godMode) {
             this.CSkull[spaceNumber] = !this.CSkull[spaceNumber];
         }
-    };
-    TzolkinGame.prototype.stepReligion = function (playerNumber, religionNumber, delta, godMode) {
+    }
+    stepReligion(playerNumber, religionNumber, delta, godMode) {
         //Increase or decrease religion by the delta
         if (godMode) {
-            var max = 7;
+            let max = 7;
             switch (religionNumber) {
                 case 0:
                     max = 7;
@@ -528,114 +481,99 @@ var TzolkinGame = /** @class */ (function () {
                     throw "Religion not recognized.";
                     break;
             }
-            var r = this.players[playerNumber].religion;
+            let r = this.players[playerNumber].religion;
             r[religionNumber] = (r[religionNumber] + delta) % max;
         }
-    };
-    TzolkinGame.prototype.stepTechnology = function (playerNumber, technologyNumber, godMode) {
+    }
+    stepTechnology(playerNumber, technologyNumber, godMode) {
         //Increase technology by a step
         if (godMode) {
-            var t = this.players[playerNumber].technology;
+            let t = this.players[playerNumber].technology;
             t[technologyNumber] = (t[technologyNumber] + 1) % 4;
         }
-    };
-    TzolkinGame.prototype.setFirstPlayer = function (playerNumber, godMode) {
+    }
+    setFirstPlayer(playerNumber, godMode) {
         //Set first player (-1 is not taken)
         if (godMode) {
             this.firstPlayerSpace = playerNumber;
         }
-    };
-    return TzolkinGame;
-}());
-var Refreshable = /** @class */ (function () {
-    function Refreshable(game) {
+    }
+}
+class Refreshable {
+    constructor(game) {
         this.game = game;
         this.ui = game.ui;
         this.ui.addRefreshable(this);
     }
-    Refreshable.prototype.refresh = function () {
+    refresh() {
         //Refresh must be implemented by sub-class
         throw "refresh must be impemented by sub-class.";
-    };
-    return Refreshable;
-}());
-var TileBase = /** @class */ (function (_super) {
-    __extends(TileBase, _super);
-    function TileBase(game, parentDom, topText, bottomText) {
-        if (topText === void 0) { topText = ""; }
-        if (bottomText === void 0) { bottomText = ""; }
-        var _this = _super.call(this, game) || this;
-        var templateArea = document.getElementById("TEMPLATES");
-        var template = templateArea.getElementsByClassName("TILE")[0];
-        _this.dom = template.cloneNode(true);
-        _this.setTopText(topText);
-        _this.setBottomText(bottomText);
-        //Add the dom to the tree
-        parentDom.appendChild(_this.dom);
-        //action name should be defined in sub-classes
-        _this.actionName = "NONE";
-        return _this;
     }
-    TileBase.prototype.setTopText = function (text) {
-        var topDom = this.dom.getElementsByClassName("tile-top-text")[0];
+}
+class TileBase extends Refreshable {
+    constructor(game, parentDom, topText = "", bottomText = "") {
+        super(game);
+        let templateArea = document.getElementById("TEMPLATES");
+        let template = templateArea.getElementsByClassName("TILE")[0];
+        this.dom = template.cloneNode(true);
+        this.setTopText(topText);
+        this.setBottomText(bottomText);
+        //Add the dom to the tree
+        parentDom.appendChild(this.dom);
+        //action name should be defined in sub-classes
+        this.actionName = "NONE";
+    }
+    setTopText(text) {
+        let topDom = this.dom.getElementsByClassName("tile-top-text")[0];
         topDom.textContent = text;
-    };
-    TileBase.prototype.setBottomText = function (text) {
-        var bottomDom = this.dom.getElementsByClassName("tile-bottom-text")[0];
+    }
+    setBottomText(text) {
+        let bottomDom = this.dom.getElementsByClassName("tile-bottom-text")[0];
         bottomDom.textContent = text;
-    };
+    }
     //super.refresh must be called from all subclasses for highlighting to work
-    TileBase.prototype.refresh = function () {
+    refresh() {
         if (this.actionName in game.actions || game.godMode) {
             this.dom.classList.add("highlight");
         }
         else {
             this.dom.classList.remove("highlight");
         }
-    };
-    return TileBase;
-}(Refreshable));
-var TileBaseBottomText = /** @class */ (function (_super) {
-    __extends(TileBaseBottomText, _super);
-    //A tile that only has text on the bottom (used for wwod/corn tiles & Chichen Itza skull indication)
-    function TileBaseBottomText(game, parentDom, bottomText) {
-        if (bottomText === void 0) { bottomText = ""; }
-        var _this = _super.call(this, game, parentDom, "", bottomText) || this;
-        _this.dom.getElementsByClassName("tile-top-text")[0].remove();
-        _this.dom.getElementsByTagName("br")[0].remove();
-        return _this;
     }
-    return TileBaseBottomText;
-}(TileBase));
-var WheelSpace = /** @class */ (function (_super) {
-    __extends(WheelSpace, _super);
-    function WheelSpace(game, parentDom, wheel, spaceNumber, bottomText) {
-        if (bottomText === void 0) { bottomText = ""; }
-        var _this = this;
-        var topText = wheel + spaceNumber.toString();
-        _this = _super.call(this, game, parentDom, wheel + spaceNumber.toString(), bottomText) || this;
-        _this.actionName = topText;
-        _this.wheel = wheel;
-        _this.spaceNumber = spaceNumber;
+}
+class TileBaseBottomText extends TileBase {
+    //A tile that only has text on the bottom (used for wwod/corn tiles & Chichen Itza skull indication)
+    constructor(game, parentDom, bottomText = "") {
+        super(game, parentDom, "", bottomText);
+        this.dom.getElementsByClassName("tile-top-text")[0].remove();
+        this.dom.getElementsByTagName("br")[0].remove();
+    }
+}
+class WheelSpace extends TileBase {
+    constructor(game, parentDom, wheel, spaceNumber, bottomText = "") {
+        let topText = wheel + spaceNumber.toString();
+        super(game, parentDom, wheel + spaceNumber.toString(), bottomText);
+        this.actionName = topText;
+        this.wheel = wheel;
+        this.spaceNumber = spaceNumber;
         //Onclick cycle to the next player for this space, -1 after all players;
         //In god mode so that resource values are not changed
-        _this.dom.onclick = function (x) {
+        this.dom.onclick = x => {
             if (game.godMode) {
-                var nextPlayerNumber = _this.game.nextWorkerOnSpace(_this.wheel, _this.spaceNumber);
-                _this.game.placeWorker(nextPlayerNumber, _this.wheel, _this.spaceNumber, true);
-                _this.refresh();
+                let nextPlayerNumber = this.game.nextWorkerOnSpace(this.wheel, this.spaceNumber);
+                this.game.placeWorker(nextPlayerNumber, this.wheel, this.spaceNumber, true);
+                this.refresh();
             }
             else {
-                _this.game.performAction(_this.actionName);
+                this.game.performAction(this.actionName);
             }
         };
-        return _this;
     }
-    WheelSpace.prototype.refresh = function () {
-        _super.prototype.refresh.call(this);
+    refresh() {
+        super.refresh();
         //Update the visuals to reflect the game
         //Change the background color
-        var player = this.game[this.wheel][this.spaceNumber];
+        let player = this.game[this.wheel][this.spaceNumber];
         if (player === -1) {
             this.dom.style.backgroundColor = "white";
         }
@@ -645,44 +583,40 @@ var WheelSpace = /** @class */ (function (_super) {
         else {
             this.dom.style.backgroundColor = this.game.players[player].color;
         }
-    };
-    return WheelSpace;
-}(TileBase));
-var ResourceTile = /** @class */ (function (_super) {
-    __extends(ResourceTile, _super);
-    function ResourceTile(game, parentDom, spaceNumber, type, visible) {
-        var _this = 
+    }
+}
+class ResourceTile extends TileBaseBottomText {
+    constructor(game, parentDom, spaceNumber, type, visible) {
         //Create resource tiles at spacenumber of type wood or corn; make tile visible with true
-        _super.call(this, game, parentDom, "") || this;
-        _this.actionName = "T".concat(spaceNumber).concat(type);
-        _this.type = type;
-        _this.spaceNumber = spaceNumber;
+        super(game, parentDom, "");
+        this.actionName = `T${spaceNumber}${type}`;
+        this.type = type;
+        this.spaceNumber = spaceNumber;
         //Define onClick
-        _this.dom.onclick = function (x) {
+        this.dom.onclick = x => {
             if (game.godMode) {
-                _this.game.pickupTile(_this.spaceNumber, _this.type, true);
-                _this.refresh();
+                this.game.pickupTile(this.spaceNumber, this.type, true);
+                this.refresh();
             }
             else {
-                _this.game.performAction(_this.actionName);
+                this.game.performAction(this.actionName);
             }
         };
         //Set the background color
-        if (_this.type === "w") {
-            _this.dom.classList.add("wood-color");
+        if (this.type === "w") {
+            this.dom.classList.add("wood-color");
         }
         else {
-            _this.dom.classList.add("corn-color");
+            this.dom.classList.add("corn-color");
         }
         //Make invisible and space taking in appropriate
         if (visible === false) {
-            _this.dom.style.visibility = "hidden";
+            this.dom.style.visibility = "hidden";
         }
-        return _this;
     }
-    ResourceTile.prototype.refresh = function () {
-        _super.prototype.refresh.call(this);
-        var remaining;
+    refresh() {
+        super.refresh();
+        let remaining;
         if (this.type === "w") {
             remaining = this.game.PWood[this.spaceNumber];
         }
@@ -690,100 +624,89 @@ var ResourceTile = /** @class */ (function (_super) {
             remaining = this.game.PCorn[this.spaceNumber];
         }
         this.setBottomText(remaining + this.type);
-    };
-    return ResourceTile;
-}(TileBaseBottomText));
-var SkullSpace = /** @class */ (function (_super) {
-    __extends(SkullSpace, _super);
-    function SkullSpace(game, parentDom, spaceNumber, visible) {
-        var _this = 
+    }
+}
+class SkullSpace extends TileBaseBottomText {
+    constructor(game, parentDom, spaceNumber, visible) {
         //Shows if the spot has been taken by the skull already
-        _super.call(this, game, parentDom, "") || this;
-        _this.actionName = "NONE";
-        _this.spaceNumber = spaceNumber;
+        super(game, parentDom, "");
+        this.actionName = "NONE";
+        this.spaceNumber = spaceNumber;
         //Set onclick action
-        _this.dom.onclick = function (x) {
+        this.dom.onclick = x => {
             if (game.godMode) {
-                _this.game.setSkull(_this.spaceNumber, true);
-                _this.refresh();
+                this.game.setSkull(this.spaceNumber, true);
+                this.refresh();
             }
         };
         //Set the background color
-        _this.dom.classList.add("skull-color");
+        this.dom.classList.add("skull-color");
         //Make invisible and space taking in appropriate
         if (visible === false) {
-            _this.dom.style.visibility = "hidden";
+            this.dom.style.visibility = "hidden";
         }
-        return _this;
     }
-    SkullSpace.prototype.refresh = function () {
-        _super.prototype.refresh.call(this);
+    refresh() {
+        super.refresh();
         if (this.game.CSkull[this.spaceNumber] === true) {
             this.setBottomText("k");
         }
         else {
             this.setBottomText("-");
         }
-    };
-    return SkullSpace;
-}(TileBaseBottomText));
-var ResourcesSpace = /** @class */ (function (_super) {
-    __extends(ResourcesSpace, _super);
-    function ResourcesSpace(game, parentDom, playerNumber, resource, promptString, bottomText, className) {
-        var _this = 
+    }
+}
+class ResourcesSpace extends TileBase {
+    constructor(game, parentDom, playerNumber, resource, promptString, bottomText, className) {
         //Show all the resources owned by a player
         //Inputs: bottomText-resource type, resouce:string of resource type, className:CSS class name, promptString: resource name as presented to player
-        _super.call(this, game, parentDom, "", bottomText) || this;
-        _this.actionName = "NONE";
-        _this.playerNumber = playerNumber;
-        _this.resource = resource;
+        super(game, parentDom, "", bottomText);
+        this.actionName = "NONE";
+        this.playerNumber = playerNumber;
+        this.resource = resource;
         //Change appearance
-        _this.dom.classList.add(className);
+        this.dom.classList.add(className);
         //onclick
-        _this.dom.onclick = function (x) {
-            if (_this.game.godMode) {
-                var input = prompt("Player ".concat(_this.playerNumber, " ").concat(promptString, ":"), _this.resouceCount().toString());
+        this.dom.onclick = x => {
+            if (this.game.godMode) {
+                let input = prompt(`Player ${this.playerNumber} ${promptString}:`, this.resouceCount().toString());
                 if (input === null) {
                     //If user does not input, don't change anything
                     return;
                 }
-                var ret = _this.validateCount(input);
+                let ret = this.validateCount(input);
                 if (ret.f === true) {
-                    _this.setCount(parseInt(input));
+                    this.setCount(parseInt(input));
                 }
-                _this.refresh();
+                this.refresh();
             }
         };
-        return _this;
     }
-    ResourcesSpace.prototype.refresh = function () {
-        _super.prototype.refresh.call(this);
+    refresh() {
+        super.refresh();
         //Show updated text
         this.setTopText(this.resouceCount().toString());
-    };
-    ResourcesSpace.prototype.resouceCount = function () {
+    }
+    resouceCount() {
         return this.game.players[this.playerNumber][this.resource];
-    };
-    ResourcesSpace.prototype.validateCount = function (input) {
-        var valid = /^\d+$/.test(input);
+    }
+    validateCount(input) {
+        let valid = /^\d+$/.test(input);
         if (valid) {
             return new Return(true, "");
         }
         else {
             return new Return(false, "Invalid user input. Input must be a non-negative integer.");
         }
-    };
-    ResourcesSpace.prototype.setCount = function (value) {
+    }
+    setCount(value) {
         this.game.players[this.playerNumber][this.resource] = value;
-    };
-    return ResourcesSpace;
-}(TileBase));
-var TrackSpace = /** @class */ (function (_super) {
-    __extends(TrackSpace, _super);
-    function TrackSpace(game, parentDom, playerNumber, type, subType, bottomTextArray, className) {
-        var _this = this;
+    }
+}
+class TrackSpace extends TileBase {
+    constructor(game, parentDom, playerNumber, type, subType, bottomTextArray, className) {
         //Space for showing religion and technology progress
-        var topText;
+        let topText;
         if (type === "religion") {
             topText = "R" + "ABCD"[subType];
         }
@@ -791,166 +714,149 @@ var TrackSpace = /** @class */ (function (_super) {
             topText = "T" + "ABCD"[subType];
         }
         //Call super for the function
-        _this = _super.call(this, game, parentDom, topText, "") || this;
-        _this.actionName = "p".concat(playerNumber).concat(topText);
-        _this.playerNumber = playerNumber;
-        _this.type = type;
-        _this.subType = subType;
-        _this.bottomTextArray = bottomTextArray;
+        super(game, parentDom, topText, "");
+        this.actionName = `p${playerNumber}${topText}`;
+        this.playerNumber = playerNumber;
+        this.type = type;
+        this.subType = subType;
+        this.bottomTextArray = bottomTextArray;
         //Make the color
-        _this.dom.classList.add(className);
+        this.dom.classList.add(className);
         //Set click function
-        _this.dom.onclick = function (x) {
-            if (_this.game.godMode) {
-                if (_this.type === "religion") {
-                    _this.game.stepReligion(_this.playerNumber, _this.subType, 1, true);
+        this.dom.onclick = x => {
+            if (this.game.godMode) {
+                if (this.type === "religion") {
+                    this.game.stepReligion(this.playerNumber, this.subType, 1, true);
                 }
                 else {
-                    _this.game.stepTechnology(_this.playerNumber, _this.subType, true);
+                    this.game.stepTechnology(this.playerNumber, this.subType, true);
                 }
-                _this.refresh();
+                this.refresh();
             }
             else {
-                _this.game.performAction(_this.actionName);
+                this.game.performAction(this.actionName);
             }
         };
-        return _this;
     }
-    TrackSpace.prototype.refresh = function () {
-        _super.prototype.refresh.call(this);
+    refresh() {
+        super.refresh();
         if (this.type === "religion") {
             this.setBottomText(this.bottomTextArray[this.game.players[this.playerNumber].religion[this.subType]]);
         }
         else {
             this.setBottomText(this.bottomTextArray[this.game.players[this.playerNumber].technology[this.subType]]);
         }
-    };
-    return TrackSpace;
-}(TileBase));
-var InfoSpace = /** @class */ (function (_super) {
-    __extends(InfoSpace, _super);
-    function InfoSpace(game, parentDom, type, bottomText) {
-        if (bottomText === void 0) { bottomText = ""; }
-        var _this = _super.call(this, game, parentDom, "", bottomText) || this;
-        _this.actionName = "NONE";
-        _this.type = type;
+    }
+}
+class InfoSpace extends TileBase {
+    constructor(game, parentDom, type, bottomText = "") {
+        super(game, parentDom, "", bottomText);
+        this.actionName = "NONE";
+        this.type = type;
         //Set onclick
-        _this.dom.onclick = function (x) {
-            if (_this.game.godMode) {
-                var input = window.prompt("Set ".concat(bottomText, ":"), _this.value().toString());
+        this.dom.onclick = x => {
+            if (this.game.godMode) {
+                let input = window.prompt(`Set ${bottomText}:`, this.value().toString());
                 if (input === null) {
                     return;
                 }
-                var ret = _this.validateValue(input);
+                let ret = this.validateValue(input);
                 if (ret.f === true) {
-                    _this.setValue(parseInt(input));
+                    this.setValue(parseInt(input));
                 }
-                _this.refresh();
+                this.refresh();
             }
         };
-        return _this;
     }
-    InfoSpace.prototype.value = function () {
+    value() {
         return this.game[this.type];
-    };
-    InfoSpace.prototype.validateValue = function (input) {
-        var valid = /^\d+$/.test(input);
+    }
+    validateValue(input) {
+        let valid = /^\d+$/.test(input);
         if (valid) {
             return new Return(true, "");
         }
         else {
             return new Return(false, "Invalid user input. Input must be a non-negative integer.");
         }
-    };
-    InfoSpace.prototype.setValue = function (value) {
+    }
+    setValue(value) {
         this.game[this.type] = value;
-    };
-    InfoSpace.prototype.refresh = function () {
-        _super.prototype.refresh.call(this);
+    }
+    refresh() {
+        super.refresh();
         this.setTopText(this.value().toString());
-    };
-    return InfoSpace;
-}(TileBase));
-var FirstPlayerSpace = /** @class */ (function (_super) {
-    __extends(FirstPlayerSpace, _super);
-    function FirstPlayerSpace(game, parentDom, bottomText) {
-        if (bottomText === void 0) { bottomText = ""; }
-        var _this = _super.call(this, game, parentDom, "S", bottomText) || this;
-        _this.actionName = "S";
+    }
+}
+class FirstPlayerSpace extends TileBase {
+    constructor(game, parentDom, bottomText = "") {
+        super(game, parentDom, "S", bottomText);
+        this.actionName = "S";
         //onclick
-        _this.dom.onclick = function (x) {
-            if (_this.game.godMode) {
-                var newFirstPlayerSpace = _this.game.firstPlayerSpace + 1;
-                if (newFirstPlayerSpace === _this.game.players.length) {
+        this.dom.onclick = x => {
+            if (this.game.godMode) {
+                let newFirstPlayerSpace = this.game.firstPlayerSpace + 1;
+                if (newFirstPlayerSpace === this.game.players.length) {
                     newFirstPlayerSpace = -1;
                 }
-                _this.game.setFirstPlayer(newFirstPlayerSpace, true);
-                _this.refresh();
+                this.game.setFirstPlayer(newFirstPlayerSpace, true);
+                this.refresh();
             }
             else {
-                _this.game.performAction(_this.actionName);
+                this.game.performAction(this.actionName);
             }
         };
-        return _this;
     }
-    FirstPlayerSpace.prototype.refresh = function () {
-        _super.prototype.refresh.call(this);
+    refresh() {
+        super.refresh();
         if (this.game.firstPlayerSpace === -1) {
             this.dom.style.backgroundColor = "white";
         }
         else {
             this.dom.style.backgroundColor = this.game.players[this.game.firstPlayerSpace].color;
         }
-    };
-    return FirstPlayerSpace;
-}(TileBase));
-var SpecialAction = /** @class */ (function (_super) {
-    __extends(SpecialAction, _super);
+    }
+}
+class SpecialAction extends TileBase {
     //Special actions that will pop up at the top
-    function SpecialAction(game, parentDom, topText, actionName) {
-        var _this = _super.call(this, game, parentDom, topText, "") || this;
-        _this.actionName = actionName;
-        _this.dom.classList.add("special");
-        _this.dom.onclick = function (x) {
-            _this.game.performAction(_this.actionName);
-            _this.refresh();
+    constructor(game, parentDom, topText, actionName) {
+        super(game, parentDom, topText, "");
+        this.actionName = actionName;
+        this.dom.classList.add("special");
+        this.dom.onclick = x => {
+            this.game.performAction(this.actionName);
+            this.refresh();
         };
-        return _this;
     }
     //Hide if not an avaliable action
-    SpecialAction.prototype.refresh = function () {
-        _super.prototype.refresh.call(this);
+    refresh() {
+        super.refresh();
         if (this.actionName in this.game.actions) {
             this.dom.style.display = "inline";
         }
         else {
             this.dom.style.display = "none";
         }
-    };
-    return SpecialAction;
-}(TileBase));
-var HelpText = /** @class */ (function (_super) {
-    __extends(HelpText, _super);
-    //Text that is shown at the top of the window
-    function HelpText(game, selfDom) {
-        var _this = _super.call(this, game) || this;
-        _this.dom = selfDom;
-        return _this;
     }
-    HelpText.prototype.refresh = function () {
+}
+class HelpText extends Refreshable {
+    //Text that is shown at the top of the window
+    constructor(game, selfDom) {
+        super(game);
+        this.dom = selfDom;
+    }
+    refresh() {
         this.dom.textContent = this.game.helpText;
-    };
-    return HelpText;
-}(Refreshable));
-var BuildingTile = /** @class */ (function (_super) {
-    __extends(BuildingTile, _super);
-    function BuildingTile(game, parentDom, building) {
-        var _this = _super.call(this, game, parentDom, "", "") || this;
-        _this.actionName = "";
-        _this.building = building;
-        _this.id = _this.building.id;
+    }
+}
+class BuildingTile extends TileBase {
+    constructor(game, parentDom, building) {
+        super(game, parentDom, "", "");
+        this.actionName = "";
+        this.building = building;
+        this.id = this.building.id;
         //Function for simplifying numbers
-        var numSim = function (n, symbol) {
+        let numSim = (n, symbol) => {
             if (n === 0 || n === undefined) {
                 return "";
             }
@@ -962,35 +868,31 @@ var BuildingTile = /** @class */ (function (_super) {
             }
         };
         //Fill in the costs
-        var topText = "";
-        topText += numSim(_this.building.costs.corn, "c");
-        topText += numSim(_this.building.costs.skulls, "k");
-        topText += numSim(_this.building.costs.wood, "w");
-        topText += numSim(_this.building.costs.stone, "s");
-        topText += numSim(_this.building.costs.gold, "g");
-        return _this;
+        let topText = "";
+        topText += numSim(this.building.costs.corn, "c");
+        topText += numSim(this.building.costs.skulls, "k");
+        topText += numSim(this.building.costs.wood, "w");
+        topText += numSim(this.building.costs.stone, "s");
+        topText += numSim(this.building.costs.gold, "g");
     }
-    return BuildingTile;
-}(TileBase));
-var PlayerDOM = /** @class */ (function (_super) {
-    __extends(PlayerDOM, _super);
-    function PlayerDOM(game, parentDom, playerNumber) {
-        var _this = 
+}
+class PlayerDOM extends Refreshable {
+    constructor(game, parentDom, playerNumber) {
         //Set up a player area for the given player number
-        _super.call(this, game) || this;
-        _this.playerNumber = playerNumber;
-        var templates = document.getElementById("TEMPLATES");
-        var playerTemplate = templates.getElementsByClassName("PLAYER-X-AREA")[0];
-        _this.dom = playerTemplate.cloneNode(true);
-        _this.dom.style.display = "block";
-        parentDom.appendChild(_this.dom);
+        super(game);
+        this.playerNumber = playerNumber;
+        let templates = document.getElementById("TEMPLATES");
+        let playerTemplate = templates.getElementsByClassName("PLAYER-X-AREA")[0];
+        this.dom = playerTemplate.cloneNode(true);
+        this.dom.style.display = "block";
+        parentDom.appendChild(this.dom);
         //Declare some re-used variables
-        var area;
+        let area;
         //Set the player name
-        area = _this.dom.getElementsByClassName("PLAYER-NAME")[0];
-        area.textContent = "Player ".concat(_this.playerNumber);
+        area = this.dom.getElementsByClassName("PLAYER-NAME")[0];
+        area.textContent = `Player ${this.playerNumber}`;
         //Setup player areas
-        area = _this.dom.getElementsByClassName("RESOURCES")[0];
+        area = this.dom.getElementsByClassName("RESOURCES")[0];
         new ResourcesSpace(game, area, playerNumber, "score", "score", "points", "score-color");
         new ResourcesSpace(game, area, playerNumber, "workersFree", "free workers", "workers", "worker-color");
         new ResourcesSpace(game, area, playerNumber, "corn", "corn", "corn", "corn-color");
@@ -999,7 +901,7 @@ var PlayerDOM = /** @class */ (function (_super) {
         new ResourcesSpace(game, area, playerNumber, "stone", "stone", "stone", "stone-color");
         new ResourcesSpace(game, area, playerNumber, "gold", "gold", "gold", "gold-color");
         //Setup religion and technology area
-        area = _this.dom.getElementsByClassName("TECHNOLOGY")[0];
+        area = this.dom.getElementsByClassName("TECHNOLOGY")[0];
         new TrackSpace(game, area, playerNumber, "religion", 0, ["-1p", "0p", "2p s", "4p", "6p s", "7p", "8p *"], "religion-0-color");
         new TrackSpace(game, area, playerNumber, "religion", 1, ["-2p", "0p", "1p", "2p g", "4p", "6p g", "9p", "12p", "13p *"], "religion-1-color");
         new TrackSpace(game, area, playerNumber, "religion", 2, ["-1p", "0p", "1p w", "3p", "5p w", "7p k", "9p", "10p *"], "religion-2-color");
@@ -1007,29 +909,27 @@ var PlayerDOM = /** @class */ (function (_super) {
         new TrackSpace(game, area, playerNumber, "technology", 1, ["", "+w", "+w/s", "+w/s/g", "2x"], "none");
         new TrackSpace(game, area, playerNumber, "technology", 2, ["", "B: 1c", "B: 1c 2p", "B: 1c 2p -x", "3p"], "none");
         new TrackSpace(game, area, playerNumber, "technology", 3, ["", ">C", ">C x:R", ">C x:R +k", "k"], "none");
-        return _this;
     }
-    PlayerDOM.prototype.refresh = function () { };
-    return PlayerDOM;
-}(Refreshable));
-var UIHandler = /** @class */ (function () {
-    function UIHandler(parentDom) {
+    refresh() { }
+}
+class UIHandler {
+    constructor(parentDom) {
         //Create a UI for a Tzolkin Game
         //Create the list of refreshables
         this.refreshables = [];
         //Setup my Dom element
-        var templates = document.getElementById("TEMPLATES");
-        var gameTemplate = templates === null || templates === void 0 ? void 0 : templates.getElementsByClassName("TZOLKIN-GAME")[0];
+        let templates = document.getElementById("TEMPLATES");
+        let gameTemplate = templates === null || templates === void 0 ? void 0 : templates.getElementsByClassName("TZOLKIN-GAME")[0];
         this.dom = gameTemplate.cloneNode(true);
         parentDom.appendChild(this.dom);
     }
-    UIHandler.prototype.create = function (game) {
+    create(game) {
         //Actually make the UI
-        var templates = document.getElementById("TEMPLATES");
+        let templates = document.getElementById("TEMPLATES");
         //Setup needed variables
-        var area;
-        var rewards;
-        var i;
+        let area;
+        let rewards;
+        let i;
         //Help Text area
         area = this.dom.getElementsByClassName("HELP-TEXT")[0];
         new HelpText(game, area);
@@ -1039,24 +939,24 @@ var UIHandler = /** @class */ (function () {
         new SpecialAction(game, area, "Pickup Workers", "pickup");
         new SpecialAction(game, area, "Beg for Corn", "beg");
         new SpecialAction(game, area, "End Turn", "end");
-        var placeHolder = new SpecialAction(game, area, "!", "!"); //Place holder
+        let placeHolder = new SpecialAction(game, area, "!", "!"); //Place holder
         placeHolder.dom.style.visibility = "hidden";
-        placeHolder.refresh = function () { }; //Should not refresh (aka stay hidden)
+        placeHolder.refresh = () => { }; //Should not refresh (aka stay hidden)
         //Build general information 
         area = this.dom.getElementsByClassName("GENERAL-AREA")[0];
         new InfoSpace(game, area, "round", "of 27 rounds");
         new InfoSpace(game, area, "firstPlayer", "first player");
         new InfoSpace(game, area, "turn", "player's turn");
         new InfoSpace(game, area, "skulls", "skulls").dom.classList.add("skull-color");
-        var firstPlayerSpace = templates.getElementsByClassName("FIRST-PLAYER-NAME")[0];
+        let firstPlayerSpace = templates.getElementsByClassName("FIRST-PLAYER-NAME")[0];
         area.appendChild(firstPlayerSpace);
         new FirstPlayerSpace(game, area, "first player");
         new InfoSpace(game, area, "bribe", "bribe").dom.classList.add("corn-color");
         //Build wheel P
         area = this.dom.getElementsByClassName("P-WHEEL-INPUT")[0];
         rewards = ["", "3c", "4c", "5c/2w", "7c/3w", "9c/4w", "~", "~"];
-        var PWoodVisibility = [false, false, false, true, true, true, false, false];
-        var PCornVisibility = [false, false, true, true, true, true, false, false];
+        let PWoodVisibility = [false, false, false, true, true, true, false, false];
+        let PCornVisibility = [false, false, true, true, true, true, false, false];
         for (i = 0; i <= 7; i++) {
             new WheelSpace(game, area, "P", i, rewards[i]);
             new ResourceTile(game, area, i, "c", PCornVisibility[i]);
@@ -1083,7 +983,7 @@ var UIHandler = /** @class */ (function () {
         //Build Wheel C
         area = this.dom.getElementsByClassName("C-WHEEL-INPUT")[0];
         rewards = ["", "4p R0", "5p R0", "6p R0", "7p R1", "8p R1", "8p R1 x", "9p R2", "11p R2 x", "13p R2 x", "~"];
-        var CSkullVisible = [false, true, true, true, true, true, true, true, true, true, false];
+        let CSkullVisible = [false, true, true, true, true, true, true, true, true, true, false];
         for (i = 0; i <= 10; i++) {
             new WheelSpace(game, area, "C", i, rewards[i]);
             new SkullSpace(game, area, i, CSkullVisible[i]);
@@ -1094,27 +994,25 @@ var UIHandler = /** @class */ (function () {
         new PlayerDOM(game, area, 1);
         //Update the visuals
         this.refresh();
-    };
-    UIHandler.prototype.addRefreshable = function (refreshable) {
+    }
+    addRefreshable(refreshable) {
         //Add a refreshable to the refereshables list
         this.refreshables.push(refreshable);
-    };
-    UIHandler.prototype.refresh = function () {
+    }
+    refresh() {
         //Refresh all the items on the refreshables list
-        for (var _i = 0, _a = this.refreshables; _i < _a.length; _i++) {
-            var r = _a[_i];
+        for (let r of this.refreshables) {
             r.refresh();
         }
-    };
-    return UIHandler;
-}());
-var inputArea = document.getElementById("input-area");
-var ui = new UIHandler(inputArea);
-var game = new TzolkinGame(ui);
+    }
+}
+let inputArea = document.getElementById("input-area");
+let ui = new UIHandler(inputArea);
+let game = new TzolkinGame(ui);
 ui.create(game);
 //Programm added buttons
-var godButton = document.getElementById("god-mode");
-godButton.onclick = function () {
+let godButton = document.getElementById("god-mode");
+godButton.onclick = () => {
     if (game.godMode) {
         game.calculate(); //re-calc what you can do
     }
