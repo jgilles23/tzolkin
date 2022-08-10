@@ -6,7 +6,7 @@ class LocalStorageHandler {
         //Build and load the current local storage
         this.prefix = prefix;
         //Load the meta-data if it already exists; otherwise create the meta data
-        let metaDataString = localStorage.getItem(this.prefix + "_meta");
+        let metaDataString = localStorage.getItem(this.prefix + "-meta");
         if (metaDataString === null) {
             this.currentPos = -1; //Nothing has been written
             this.maxPos = -1; //Nothing has been written
@@ -21,10 +21,27 @@ class LocalStorageHandler {
     save(game) {
         //Iterate current position by 1 and save
         //Delete future positions if required
+        this.currentPos += 1;
+        localStorage.setItem(`${this.prefix}-${this.currentPos}`, game.stringify()); //Save
+        console.log(`${this.prefix}-${this.currentPos} saved`);
+        //Check if future items need to be saved over
+        if (this.maxPos <= this.currentPos) {
+            this.maxPos = this.currentPos;
+        }
+        else {
+            //Something needs to be deleted, iterate through the max-saves and delete
+            while (this.maxPos > this.currentPos) {
+                localStorage.removeItem(`${this.prefix}-${this.maxPos}`);
+                console.log(`${this.prefix}-${this.maxPos} removed`);
+                this.maxPos -= 1;
+            }
+        }
+        //Save the meta-data
+        this.saveMetaData();
     }
     saveMetaData() {
         //Save self meta data
-        localStorage.setItem(this.prefix + "_meta", JSON.stringify(this));
+        localStorage.setItem(this.prefix + "-meta", JSON.stringify(this));
     }
     undo(game) {
         //Step current position back by 1 then load into the game provided
@@ -32,10 +49,20 @@ class LocalStorageHandler {
             console.log("Cannot undo, no positions have been saved.");
         }
         else if (this.currentPos === 0) {
-            console.log("Cannot undo, currently in the 1st position");
+            console.log("Cannot undo, currently in the 1st position.");
         }
         else {
             this.currentPos -= 1;
+            this.load(game);
+        }
+    }
+    redo(game) {
+        //Iterate the current position by 1 (if possible) and load
+        if (this.currentPos >= this.maxPos) {
+            console.log("Cannot redo, no future positions have been saved.");
+        }
+        else {
+            this.currentPos += 1;
             this.load(game);
         }
     }
@@ -44,13 +71,20 @@ class LocalStorageHandler {
         //Override the game data with the new data
         if (this.currentPos < 0) {
             console.log("Cannot load, no positions have been saved.");
+            //Save the current position
+            this.save(game);
             return;
         }
         let gameString = localStorage.getItem(`${this.prefix}-${this.currentPos}`);
+        console.log(`${this.prefix}-${this.currentPos} loaded`);
         if (gameString === null) {
             throw "Expected to load game string, got nothing.";
         }
-        let gameData = JSON.parse(gameString);
+        let gameObject = JSON.parse(gameString);
+        //Unpack the gameObject onto the game
+        game.unpack(gameObject);
+        //Save the meta-data
+        this.saveMetaData();
     }
     deleteAll() {
         //Remove all data saved in local storage & reset self
@@ -84,24 +118,25 @@ class Return {
     }
 }
 class Building {
-    constructor(game, costs, rewards, color, buildingNumber) {
-        this.game = game;
+    constructor(costs, rewards, color, buildingNumber) {
         this.costs = costs;
         this.rewards = rewards;
         this.color = color;
         this.id = buildingNumber;
-        let player = this.game.players[this.game.turn];
-        this.pairs = [
+    }
+    pairs(game) {
+        let player = game.players[game.turn];
+        return [
             [this.costs.corn, player.corn, "corn"],
             [this.costs.wood, player.wood, "wood"],
             [this.costs.stone, player.stone, "stone"],
             [this.costs.gold, player.gold, "gold"]
         ];
     }
-    testBuildResources(architecture) {
-        let player = this.game.players[this.game.turn];
+    testBuildResources(game, architecture) {
+        let player = game.players[game.turn];
         let resourceDeficit = 0;
-        for (let [cost, inventory, resourceName] of this.pairs) {
+        for (let [cost, inventory, resourceName] of this.pairs(game)) {
             if (cost !== undefined && cost > inventory) {
                 resourceDeficit += cost - player.corn;
             }
@@ -120,18 +155,18 @@ class Building {
             return false;
         }
     }
-    performBuildResources(architecture, savedResource) {
-        let player = this.game.players[this.game.turn];
+    performBuildResources(game, architecture, savedResource) {
+        let player = game.players[game.turn];
         //Actually spend the resources to build something
         //testBuildResources must be run first otherwise something might be built without having the required resources
         //See if architecture should be offered
         if (architecture && player.hasArchitectureSavingsTech()) {
         }
     }
-    testBuildCorn(architecture) {
-        let player = this.game.players[this.game.turn];
+    testBuildCorn(game, architecture) {
+        let player = game.players[game.turn];
         let cornCost = 0;
-        for (let [cost, inventory, resourceName] of this.pairs) {
+        for (let [cost, inventory, resourceName] of this.pairs(game)) {
             if (cost !== undefined) {
                 cornCost += cost * 2; //Spend 2 corn per resource
             }
@@ -153,10 +188,19 @@ class Building {
         }
     }
 }
-let allBuildings = [1, 2, 3, 4];
+let allBuildings = [
+    new Building({ wood: 1 }, { freeWorkers: 1 }, "yellow", 0),
+    new Building({ wood: 4 }, { workerDiscount: 1 }, "yellow", 3),
+    new Building({ wood: 2 }, { technology: [0] }, "green", 5),
+    new Building({ wood: 1, stone: 1 }, { technology: [2], corn: 1 }, "green", 7),
+    new Building({ stone: 1, gold: 1 }, { technology: [3], religion: [2] }, "blue", 10),
+    new Building({ wood: 1, stone: 2, gold: 1 }, { religion: [0, 1, 2], points: 3 }, "brown", 100)
+];
 class TzolkinGame {
-    constructor(ui) {
+    constructor(ui, storage) {
         //Create a game (assume two player)
+        //If ui is null, the game will not display
+        //If storage is null, the game will not save
         this.P = new Array(8).fill(-1);
         this.PCorn = new Array(8).fill(0);
         this.PWood = new Array(8).fill(0);
@@ -170,7 +214,7 @@ class TzolkinGame {
         this.CSkull = new Array(11).fill(false);
         this.skulls = 13;
         this.monuments = [];
-        this.buildings = [];
+        this.buildings = [0, 1, 2, 3, 4, 5];
         this.bribe = 0;
         this.round = 1;
         this.turn = 0;
@@ -180,11 +224,14 @@ class TzolkinGame {
             new Player(0, "IndianRed"),
             new Player(1, "SteelBlue")
         ];
-        this.ui = ui;
+        //Display and calculate
         this.calculationStack = [];
-        this.actions = {};
         this.helpText = "";
         this.godMode = false;
+        //Non-saved data
+        this.ui = ui;
+        this.storage = storage;
+        this.actions = {};
         //Caculate the starting turn
         this.calculationStack.push({ name: "turnStart" });
         this.calculate();
@@ -192,6 +239,15 @@ class TzolkinGame {
     stringify() {
         let replacer = (key, value) => {
             if (key === "ui") {
+                //Don't save the ui data
+                return undefined;
+            }
+            else if (key === "actions") {
+                //Don't save the actions data, will need to be re-calculated
+                return undefined;
+            }
+            else if (key === "storage") {
+                //Do not save the storage in the storage it messes everything up
                 return undefined;
             }
             else {
@@ -199,6 +255,28 @@ class TzolkinGame {
             }
         };
         return JSON.stringify(this, replacer);
+    }
+    unpack(gameObject) {
+        //Enforce type on gameObject
+        let gameObjectTyped = gameObject;
+        //Assign the un-stringified gameObject to the game
+        Object.assign(this, gameObjectTyped);
+        //Assign the players
+        if (gameObjectTyped.players === undefined) {
+            throw "gameObject loaded does not have players defined";
+        }
+        this.players = [];
+        let i = 0;
+        for (let playerObject of gameObjectTyped.players) {
+            let newPlayer = new Player(i, "grey");
+            //Actually assign the player to the game
+            this.players.push(Object.assign(newPlayer, playerObject));
+            i += 1;
+        }
+        //Run the calculation to determine the actions avaliable
+        this.calculate();
+        //Refresh the visuals as if the previous action was just taken
+        this.refresh();
     }
     getWheels() {
         return [["P", this.P], ["Y", this.Y], ["T", this.T], ["U", this.U], ["C", this.C]];
@@ -250,7 +328,6 @@ class TzolkinGame {
             this.actions["beg"] = () => {
                 //Beg for corn
                 player.corn = 3;
-                console.log(allBuildings);
                 //Add the startover action
                 this.calculationStack.push({ name: "turnStart" });
                 //Add the beg religion calculation
@@ -393,7 +470,9 @@ class TzolkinGame {
         console.log("TODO Choose Action not yet implemented.");
     }
     refresh() {
-        this.ui.refresh();
+        if (this.ui !== null) {
+            this.ui.refresh();
+        }
     }
     performAction(actionName) {
         //Perform an action
@@ -407,6 +486,10 @@ class TzolkinGame {
             this.calculate();
             //Update the ui
             this.refresh();
+            //Save the state of the game
+            if (this.storage !== null) {
+                this.storage.save(this);
+            }
         }
         else {
             console.log(`Action "${actionName}" not recognized as a legal move.`);
@@ -502,7 +585,12 @@ class TzolkinGame {
 class Refreshable {
     constructor(game) {
         this.game = game;
-        this.ui = game.ui;
+        if (game.ui === null) {
+            throw "game has not been assigned a ui. ui must be assigned to the game before creating elements";
+        }
+        else {
+            this.ui = game.ui;
+        }
         this.ui.addRefreshable(this);
     }
     refresh() {
@@ -524,11 +612,11 @@ class TileBase extends Refreshable {
         this.actionName = "NONE";
     }
     setTopText(text) {
-        let topDom = this.dom.getElementsByClassName("tile-top-text")[0];
+        let topDom = this.dom.getElementsByClassName("TOP-TEXT")[0];
         topDom.textContent = text;
     }
     setBottomText(text) {
-        let bottomDom = this.dom.getElementsByClassName("tile-bottom-text")[0];
+        let bottomDom = this.dom.getElementsByClassName("BOTTOM-TEXT")[0];
         bottomDom.textContent = text;
     }
     //super.refresh must be called from all subclasses for highlighting to work
@@ -850,30 +938,87 @@ class HelpText extends Refreshable {
     }
 }
 class BuildingTile extends TileBase {
-    constructor(game, parentDom, building) {
+    constructor(game, parentDom, pos) {
         super(game, parentDom, "", "");
-        this.actionName = "";
-        this.building = building;
-        this.id = this.building.id;
+        this.actionName = `B${pos}`;
+        this.pos = pos;
+        //Show the bottom text as large
+    }
+    numSim(n, symbol) {
         //Function for simplifying numbers
-        let numSim = (n, symbol) => {
-            if (n === 0 || n === undefined) {
-                return "";
+        //Retunrs "" for undefined values
+        if (n === 0 || n === undefined) {
+            return "";
+        }
+        else if (n === 1 && symbol !== "c" && symbol !== "p") {
+            //Corn and points should always have a number
+            return symbol + " ";
+        }
+        else {
+            return n.toString() + symbol + " ";
+        }
+    }
+    getBaseText(base) {
+        let text = "";
+        text += this.numSim(base.corn, "c");
+        text += this.numSim(base.skulls, "k");
+        text += this.numSim(base.wood, "w");
+        text += this.numSim(base.stone, "s");
+        text += this.numSim(base.gold, "g");
+        text += this.numSim(base.points, "p");
+        return text.slice(0, text.length - 1);
+    }
+    refresh() {
+        super.refresh();
+        //Ensure that there is a building to display
+        if (this.pos >= game.buildings.length) {
+            this.setTopText("");
+            this.setBottomText("");
+            return;
+        }
+        let building = allBuildings[this.game.buildings[this.pos]];
+        //Show the toptext
+        this.setTopText(this.getBaseText(building.costs));
+        //Calculate and show the bottom text
+        let bottomText = "";
+        //bottom text technology
+        if (building.rewards.technology !== undefined) {
+            for (let techNum of building.rewards.technology) {
+                if (techNum === -1) {
+                    bottomText += "TX ";
+                }
+                else {
+                    bottomText += `T${"ABCD"[techNum]} `;
+                }
             }
-            else if (n === 1 && symbol !== "c") {
-                return symbol + " ";
+        }
+        //Bottom text religion
+        if (building.rewards.religion !== undefined) {
+            for (let religionNum of building.rewards.religion) {
+                if (religionNum === -1) {
+                    bottomText += "RX ";
+                }
+                else {
+                    bottomText += `R${"ABC"[religionNum]} `;
+                }
             }
-            else {
-                return n.toString() + symbol + " ";
-            }
-        };
-        //Fill in the costs
-        let topText = "";
-        topText += numSim(this.building.costs.corn, "c");
-        topText += numSim(this.building.costs.skulls, "k");
-        topText += numSim(this.building.costs.wood, "w");
-        topText += numSim(this.building.costs.stone, "s");
-        topText += numSim(this.building.costs.gold, "g");
+        }
+        //Build
+        if (building.rewards.build === true) {
+            bottomText += "B ";
+        }
+        //Free workers
+        if (building.rewards.freeWorkers !== undefined) {
+            bottomText += "W".repeat(building.rewards.freeWorkers) + " ";
+        }
+        //worker discount
+        if (building.rewards.workerDiscount !== undefined) {
+            bottomText += `W:-${building.rewards.workerDiscount}c `;
+        }
+        //Normal reqards
+        bottomText += this.getBaseText(building.rewards);
+        //Set the bottom text
+        this.setBottomText(bottomText);
     }
 }
 class PlayerDOM extends Refreshable {
@@ -988,6 +1133,11 @@ class UIHandler {
             new WheelSpace(game, area, "C", i, rewards[i]);
             new SkullSpace(game, area, i, CSkullVisible[i]);
         }
+        //Build the Building area
+        area = this.dom.getElementsByClassName("BUILDINGS")[0];
+        for (i = 0; i < 6; i++) {
+            new BuildingTile(game, area, i);
+        }
         //Add the players
         area = this.dom.getElementsByClassName("PLAYER-AREA")[0];
         new PlayerDOM(game, area, 0);
@@ -1008,8 +1158,10 @@ class UIHandler {
 }
 let inputArea = document.getElementById("input-area");
 let ui = new UIHandler(inputArea);
-let game = new TzolkinGame(ui);
-ui.create(game);
+let storage = new LocalStorageHandler("game");
+let game = new TzolkinGame(ui, storage);
+ui.create(game); //Create the ui based on the game
+storage.load(game); //Load the storage based on the game
 //Programm added buttons
 let godButton = document.getElementById("god-mode");
 godButton.onclick = () => {
@@ -1019,5 +1171,15 @@ godButton.onclick = () => {
     //Switch to god mode
     game.godMode = !game.godMode;
     game.refresh(); //refresh the visuals
+};
+//Undo one move
+let undoButton = document.getElementById("undo-button");
+undoButton.onclick = () => {
+    storage.undo(game);
+};
+//Redo one move
+let redoButton = document.getElementById("redo-button");
+redoButton.onclick = () => {
+    storage.redo(game);
 };
 //# sourceMappingURL=tzolkin.js.map

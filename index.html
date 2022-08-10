@@ -21,7 +21,7 @@
             /* Firefox */
             -ms-user-select: none;
             /* IE10+/Edge */
-            /* user-select: none; */
+            user-select: none;
             /* Standard */
             /* touch-
             action: pan-y; */
@@ -183,6 +183,8 @@
         <div class="menu-bar">
             <span class="submenu">
                 <!--Right submenu-->
+                <span class="menu-button" id="undo-button">Undo</span>
+                <span class="menu-button" id="redo-button">Redo</span>
                 <span class="menu-button" id="god-mode">God Mode</span>
             </span>
         </div>
@@ -225,8 +227,12 @@
                     <div></div>
                 </span>
                 <!--Buildings-->
-                <span class="grid MONUMENTS"></span>
-                <span class="grid BUILDINGS"></span>
+                <span class="grid MONUMENTS">
+                    <div class="area-name">Monuments</div>
+                </span>
+                <span class="grid BUILDINGS">
+                    <div class="area-name">Buildings</div>
+                </span>
                 <!--Player area-->
                 <span class="PLAYER-AREA">
 
@@ -234,9 +240,9 @@
             </span>
             <!--Tile template-->
             <span class="tile TILE">
-                <span class="tile-top-text"></span>
+                <span class="tile-top-text TOP-TEXT"></span>
                 <br>
-                <span class="tile-bottom-text"></span>
+                <span class="tile-bottom-text BOTTOM-TEXT"></span>
             </span>
             <!--First player name-->
             <div class="area-name FIRST-PLAYER-NAME">First Player Space</div>
