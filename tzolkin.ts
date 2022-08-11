@@ -36,7 +36,7 @@ type BuildingResourceName = "corn" | "wood" | "stone" | "gold"
 type Pairs = Array<[number | undefined, number, BuildingResourceName]>
 
 //Random Tupe type that I can't remember where it is used
-type Tuple = [Wheel, Array<number>]
+type Tuple = [Wheel, Array<number>, number] //[wheel name, wheel, lastSpot]
 //The calculation types that can be added to the calculation stack
 type CalculationTypes = CalculationTurnStart | CalculationPickup | CalculationChooseAction | CalculationPlace |
     CalculateBegReligion
@@ -171,6 +171,7 @@ class Player {
     wood: number
     stone: number
     gold: number
+    doubleAdvance: boolean
 
     constructor(id: number, color: string) {
         this.id = id
@@ -186,6 +187,7 @@ class Player {
         this.wood = 0
         this.stone = 0
         this.gold = 0
+        this.doubleAdvance = true
     }
 
     hasArchitectureSavingsTech() {
@@ -329,17 +331,17 @@ class TzolkinGame {
         //Create a game (assume two player)
         //If ui is null, the game will not display
         //If storage is null, the game will not save
-        this.P = new Array<number>(8).fill(-1)
+        this.P = new Array<number>(10).fill(-1)
         this.PCorn = new Array<number>(8).fill(0)
         this.PWood = new Array<number>(8).fill(0)
         for (let i = 2; i <= 5; i++) {
             this.PWood[i] = 2
         }
-        this.Y = new Array<number>(8).fill(-1)
-        this.T = new Array<number>(8).fill(-1)
+        this.Y = new Array<number>(10).fill(-1)
+        this.T = new Array<number>(10).fill(-1)
 
-        this.U = new Array<number>(8).fill(-1)
-        this.C = new Array<number>(11).fill(-1)
+        this.U = new Array<number>(10).fill(-1)
+        this.C = new Array<number>(13).fill(-1)
         this.CSkull = new Array<boolean>(11).fill(false)
         this.skulls = 13
         this.monuments = []
@@ -408,7 +410,13 @@ class TzolkinGame {
     }
 
     getWheels(): Array<Tuple> {
-        return [["P", this.P], ["Y", this.Y], ["T", this.T], ["U", this.U], ["C", this.C]]
+        //Return [wheel name, wheel, lengthOccupiable]
+        return [
+            ["P", this.P, 8],
+            ["Y", this.Y, 8],
+            ["T", this.T, 8],
+            ["U", this.U, 8],
+            ["C", this.C, 11]]
     }
 
     calculate() {
@@ -481,9 +489,9 @@ class TzolkinGame {
         }
         let player = this.players[this.turn]
         //Iterate through all the wheels and positions
-        for (let [wheelName, wheel] of this.getWheels()) {
+        for (let [wheelName, wheel, lengthOccupiable] of this.getWheels()) {
             for (let pos = 0; pos < this.C.length; pos++) {
-                if (pos < wheel.length) {
+                if (pos < lengthOccupiable) {
                     //Check if player has a piece there
                     if (wheel[pos] === this.turn) {
                         //Player can pickup from this location
@@ -529,10 +537,10 @@ class TzolkinGame {
             return //Done, no new workers that can be placed
         }
         //Find the lowest numbered spot (if there are still workers free)
-        for (let [wheelName, wheel] of this.getWheels()) {
+        for (let [wheelName, wheel, lengthOccupiable] of this.getWheels()) {
             let foundOpenPosition: boolean = false
             for (let pos = 0; pos < this.C.length; pos++) {
-                if (pos < wheel.length) {
+                if (pos < lengthOccupiable) {
                     //Need empty spot and corn
                     if (player.corn >= pos + workersPlaced && wheel[pos] === -1) {
                         //Worker can be placed here
@@ -626,17 +634,110 @@ class TzolkinGame {
         } else {
             console.log(`Action "${actionName}" not recognized as a legal move.`)
         }
-        //No refresh here, each action performed should refresh on its own
     }
 
     performEndTurn() {
-        console.log("performEndTurn TO BE BUILT")
+        //Performance of the end turn
+        this.turn = (this.turn + 1) % this.players.length
+        //Check if it is the end of the year
+        if (this.turn === this.firstPlayer) {
+            //Check if starting player space taken - to check double advance
+            if (this.firstPlayerSpace !== -1) {
+
+
+            }
+
+        } else {
+            //Finish by setting the calc for the next players turn
+            this.calculationStack.push({ name: "turnStart" })
+        }
     }
 
+    performAdvanceCalendar(numDays: number) {
+        //Advances the calendar (numDays) days
+        //Does NOT perform check to confirm that the num days requested is valid
+        //That needs to happen elsewhere
+        for (let k = 0; k < numDays; k++) {
+            //Check if a workers is on the starting position and change first player
+            if (this.firstPlayerSpace !== -1) {
+                //Shift the first player token
+                if (this.firstPlayerSpace !== this.firstPlayer) {
+                    this.firstPlayer = this.firstPlayerSpace
+                } else {
+                    this.firstPlayer = (this.firstPlayer + 1) % this.players.length
+                }
+                //Give the bribe to the person who selected first player
+                this.players[this.firstPlayerSpace].corn += this.bribe
+                this.bribe = 0
+                //Return the worker
+                this.players[this.firstPlayerSpace].workersFree += 1
+                this.firstPlayerSpace = -1
+            }
+            //Iterate through each wheel and move the workers forward
+            for (let [wheelName, wheel, lengthOccupiable] of this.getWheels()) {
+                let lasPositionValue = wheel[wheel.length - 1]
+                //Roll the wheel forward
+                for (let i = wheel.length - 1; i > 0; i--) {
+                    //Iterate backwards through the wheel moving the workers
+                    wheel[i] = wheel[i - 1]
+                }
+                //Set 0th to last position
+                wheel[0] = lasPositionValue
+                //Return workers from the last spot, advance last spot to first spot
+                if (wheel[lengthOccupiable] >= 0) {
+                    //Player worker to be returned
+                    this.players[wheel[lengthOccupiable]].workersFree += 1
+                    wheel[lengthOccupiable] = -1
+                }
+            }
+        }
+    }
+
+    //GOD FUNCTIONS
+    //Each should start with a check - throw & end with a refresh
+
+    godModeToggle() {
+        //Toggles on and off god mode; saves a copy of the modified game
+        if (game.godMode) {
+            //Turn god mode off
+            this.godMode = false
+            //Recalculate the actions
+            game.calculate()
+        } else {
+            //Turn god mode on
+            this.godMode = true
+        }
+        //Update UI
+        this.refresh()
+        //Save the state of the game
+        if (this.storage !== null) {
+            this.storage.save(this)
+        }
+    }
+
+    godRotateWorker(wheelName: Wheel, spaceNumber: number) {
+        //Calculate the next worker type on the wheel and place
+        if (this.godMode === false) { throw "godMode not enabled" }
+        this[wheelName][spaceNumber] += 1
+        if (this[wheelName][spaceNumber] >= this.players.length) {
+            this[wheelName][spaceNumber] = -2
+        }
+        this.refresh()
+    }
+
+    godRotateFirstPlacerSpaceWorker() {
+        //god mode, rotate the worker on the first player space
+        if (this.godMode === false) { throw "godMode not enabled" }
+        this.firstPlayerSpace += 1
+        if (this.firstPlayerSpace >= this.players.length) {
+            this.firstPlayerSpace = -1
+        }
+        this.refresh()
+    }
 
     placeWorker(playerNumber: number, wheel: Wheel, spaceNumber: number, godMode: boolean): Return {
         //Place the worker that is requested by the user
-        //Perform differently in god and not god modee
+        //Perform differently in god and not god mode
         //Place the worker
         if (godMode) {
             this[wheel][spaceNumber] = playerNumber
@@ -645,72 +746,74 @@ class TzolkinGame {
         return new Return(false)
     }
 
-    nextWorkerOnSpace(wheel: Wheel, spaceNumber: number): number {
-        //Calculate the next worker to go on a space
-        let x = this[wheel][spaceNumber] + 1
-        if (x === this.players.length) {
-            return -2
-        } else {
-            return x
-        }
-    }
-
-    pickupTile(spaceNumber: number, type: "w" | "c", godMode: boolean) {
+    godPickupTile(spaceNumber: number, type: "w" | "c") {
         //Pickup either a wood or a corn tile
-        if (godMode) {
-            if (type === "w") {
-                if (this.PWood[spaceNumber] === 0) {
-                    this.PWood[spaceNumber] = this.players.length
-                } else {
-                    this.PWood[spaceNumber] -= 1
-                }
+        if (this.godMode === false) { throw "godMode not enabled" }
+        if (type === "w") {
+            if (this.PWood[spaceNumber] === 0) {
+                this.PWood[spaceNumber] = this.players.length
             } else {
-                if (this.PCorn[spaceNumber] === 0) {
-                    this.PCorn[spaceNumber] = this.players.length
-                } else {
-                    this.PCorn[spaceNumber] -= 1
-                }
+                this.PWood[spaceNumber] -= 1
+            }
+        } else {
+            if (this.PCorn[spaceNumber] === 0) {
+                this.PCorn[spaceNumber] = this.players.length
+            } else {
+                this.PCorn[spaceNumber] -= 1
             }
         }
+        this.refresh()
     }
 
-    setSkull(spaceNumber: number, godMode: boolean) {
+    godSetSkull(spaceNumber: number) {
         //Set a skill on the C wheel
-        if (godMode) {
-            this.CSkull[spaceNumber] = !this.CSkull[spaceNumber]
-        }
+        if (this.godMode === false) { throw "godMode not enabled" }
+        this.CSkull[spaceNumber] = !this.CSkull[spaceNumber]
+        this.refresh()
     }
 
-    stepReligion(playerNumber: number, religionNumber: number, delta: number, godMode: boolean) {
+    godStepReligion(playerNumber: number, religionNumber: number, delta: number) {
         //Increase or decrease religion by the delta
-        if (godMode) {
-            let max: number = 7
-            switch (religionNumber) {
-                case 0: max = 7; break;
-                case 1: max = 9; break;
-                case 2: max = 8; break;
-                default: throw "Religion not recognized."; break;
-            }
-            let r = this.players[playerNumber].religion
-            r[religionNumber] = (r[religionNumber] + delta) % max
+        if (this.godMode === false) { throw "godMode not enabled" }
+        let max: number = 7
+        switch (religionNumber) {
+            case 0: max = 7; break;
+            case 1: max = 9; break;
+            case 2: max = 8; break;
+            default: throw "Religion not recognized."; break;
         }
+        let r = this.players[playerNumber].religion
+        r[religionNumber] = (r[religionNumber] + delta) % max
+        this.refresh()
     }
 
-    stepTechnology(playerNumber: number, technologyNumber: number, godMode: boolean) {
+    godStepTechnology(playerNumber: number, technologyNumber: number) {
         //Increase technology by a step
-        if (godMode) {
-            let t = this.players[playerNumber].technology
-            t[technologyNumber] = (t[technologyNumber] + 1) % 4
-        }
+        if (this.godMode === false) { throw "godMode not enabled" }
+        let t = this.players[playerNumber].technology
+        t[technologyNumber] = (t[technologyNumber] + 1) % 4
+        this.refresh()
     }
 
-    setFirstPlayer(playerNumber: number, godMode: boolean) {
+    godSetFirstPlayer(playerNumber: number) {
         //Set first player (-1 is not taken)
-        if (godMode) {
-            this.firstPlayerSpace = playerNumber
-        }
+        if (this.godMode === false) { throw "godMode not enabled" }
+        this.firstPlayerSpace = playerNumber
+        this.refresh()
     }
 
+    godSetPlayerResourceValue(playerNumber: number, resouce: PlayerValueDirect, value: number) {
+        //Set a player resource value
+        if (this.godMode === false) { throw "godMode not enabled" }
+        this.players[playerNumber][resouce] = value
+        this.refresh()
+    }
+
+    godSetInformationValue(informationName: InformationValue, value: number) {
+        if (this.godMode === false) { throw "godMode not enabled" }
+        this[informationName] = value
+        this.refresh()
+    }
 
 }
 
@@ -730,6 +833,9 @@ class Refreshable {
     refresh() {
         //Refresh must be implemented by sub-class
         throw "refresh must be impemented by sub-class."
+    }
+    setGame(game: TzolkinGame) {
+        this.game = game
     }
 }
 
@@ -791,9 +897,7 @@ class WheelSpace extends TileBase {
         //In god mode so that resource values are not changed
         this.dom.onclick = x => {
             if (game.godMode) {
-                let nextPlayerNumber = this.game.nextWorkerOnSpace(this.wheel, this.spaceNumber)
-                this.game.placeWorker(nextPlayerNumber, this.wheel, this.spaceNumber, true)
-                this.refresh()
+                this.game.godRotateWorker(wheel, spaceNumber)
             } else {
                 this.game.performAction(this.actionName)
             }
@@ -828,8 +932,7 @@ class ResourceTile extends TileBaseBottomText {
         //Define onClick
         this.dom.onclick = x => {
             if (game.godMode) {
-                this.game.pickupTile(this.spaceNumber, this.type, true)
-                this.refresh()
+                this.game.godPickupTile(this.spaceNumber, this.type)
             } else {
                 this.game.performAction(this.actionName)
             }
@@ -868,8 +971,7 @@ class SkullSpace extends TileBaseBottomText {
         //Set onclick action
         this.dom.onclick = x => {
             if (game.godMode) {
-                this.game.setSkull(this.spaceNumber, true)
-                this.refresh()
+                this.game.godSetSkull(this.spaceNumber)
             }
         }
         //Set the background color
@@ -937,7 +1039,7 @@ class ResourcesSpace extends TileBase {
         }
     }
     setCount(value: number) {
-        this.game.players[this.playerNumber][this.resource] = value
+        this.game.godSetPlayerResourceValue(this.playerNumber, this.resource, value)
     }
 }
 
@@ -970,11 +1072,10 @@ class TrackSpace extends TileBase {
         this.dom.onclick = x => {
             if (this.game.godMode) {
                 if (this.type === "religion") {
-                    this.game.stepReligion(this.playerNumber, this.subType, 1, true)
+                    this.game.godStepReligion(this.playerNumber, this.subType, 1)
                 } else {
-                    this.game.stepTechnology(this.playerNumber, this.subType, true)
+                    this.game.godStepTechnology(this.playerNumber, this.subType)
                 }
-                this.refresh()
             } else {
                 this.game.performAction(this.actionName)
             }
@@ -1008,7 +1109,6 @@ class InfoSpace extends TileBase {
                 if (ret.f === true) {
                     this.setValue(parseInt(input))
                 }
-                this.refresh()
             }
         }
     }
@@ -1024,7 +1124,7 @@ class InfoSpace extends TileBase {
         }
     }
     setValue(value: number) {
-        this.game[this.type] = value
+        this.game.godSetInformationValue(this.type, value)
     }
     refresh() {
         super.refresh()
@@ -1043,8 +1143,7 @@ class FirstPlayerSpace extends TileBase {
                 if (newFirstPlayerSpace === this.game.players.length) {
                     newFirstPlayerSpace = -1
                 }
-                this.game.setFirstPlayer(newFirstPlayerSpace, true)
-                this.refresh()
+                this.game.godRotateFirstPlacerSpaceWorker()
             } else {
                 this.game.performAction(this.actionName)
             }
@@ -1068,7 +1167,6 @@ class SpecialAction extends TileBase {
         this.dom.classList.add("special")
         this.dom.onclick = x => {
             this.game.performAction(this.actionName)
-            this.refresh()
         }
     }
     //Hide if not an avaliable action
@@ -1204,6 +1302,7 @@ class PlayerDOM extends Refreshable {
         new ResourcesSpace(game, area, playerNumber, "wood", "wood", "wood", "wood-color")
         new ResourcesSpace(game, area, playerNumber, "stone", "stone", "stone", "stone-color")
         new ResourcesSpace(game, area, playerNumber, "gold", "gold", "gold", "gold-color")
+        // new ResourcesSpace(game, area, playerNumber, "")
         //Setup religion and technology area
         area = this.dom.getElementsByClassName("TECHNOLOGY")[0] as HTMLSpanElement
         new TrackSpace(game, area, playerNumber, "religion", 0,
@@ -1258,7 +1357,7 @@ class UIHandler {
         placeHolder.refresh = () => { } //Should not refresh (aka stay hidden)
         //Build general information 
         area = this.dom.getElementsByClassName("GENERAL-AREA")[0] as HTMLSpanElement
-        new InfoSpace(game, area, "round", "of 27 rounds")
+        new InfoSpace(game, area, "round", "of 8/14/21/27")
         new InfoSpace(game, area, "firstPlayer", "first player")
         new InfoSpace(game, area, "turn", "player's turn")
         new InfoSpace(game, area, "skulls", "skulls").dom.classList.add("skull-color")
@@ -1315,6 +1414,11 @@ class UIHandler {
         this.refresh()
 
     }
+    setGame(game: TzolkinGame) {
+        for (let r of this.refreshables) {
+            r.setGame(game)
+        }
+    }
     addRefreshable(refreshable: Refreshable) {
         //Add a refreshable to the refereshables list
         this.refreshables.push(refreshable)
@@ -1335,14 +1439,9 @@ ui.create(game) //Create the ui based on the game
 storage.load(game) //Load the storage based on the game
 
 //Programm added buttons
-let godButton = document.getElementById("god-mode") as HTMLSpanElement
+let godButton = document.getElementById("god-mode-button") as HTMLSpanElement
 godButton.onclick = () => {
-    if (game.godMode) {
-        game.calculate() //re-calc what you can do
-    }
-    //Switch to god mode
-    game.godMode = !game.godMode
-    game.refresh() //refresh the visuals
+    game.godModeToggle()
 }
 //Undo one move
 let undoButton = document.getElementById("undo-button") as HTMLSpanElement
@@ -1353,4 +1452,17 @@ undoButton.onclick = () => {
 let redoButton = document.getElementById("redo-button") as HTMLSpanElement
 redoButton.onclick = () => {
     storage.redo(game)
+}
+
+//Clear the local storage and load a new game
+let clearAllButton = document.getElementById("clear-all-button") as HTMLSpanElement
+clearAllButton.onclick = () => {
+    //Clear the local storage and load a new game
+    localStorage.clear()
+    storage = new LocalStorageHandler("game")
+    game = new TzolkinGame(ui, storage)
+    ui.setGame(game)
+    console.log("Local storage cleared and new game started.")
+    storage.load(game)
+    game.refresh()
 }
