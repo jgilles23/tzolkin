@@ -513,7 +513,7 @@ class TzolkinGame {
             }
         }
         else {
-            //Finish by setting the calc for the next players turn
+            //If the round is not over, push to the next players turn
             this.calculationStack.push({ name: "turnStart" });
         }
     }
@@ -558,7 +558,7 @@ class TzolkinGame {
         }
     }
     //GOD FUNCTIONS
-    //Each should start with a check - throw & end with a refresh
+    //Each should start with a check/throw & end with a refresh
     godModeToggle() {
         //Toggles on and off god mode; saves a copy of the modified game
         if (game.godMode) {
@@ -599,16 +599,6 @@ class TzolkinGame {
             this.firstPlayerSpace = -1;
         }
         this.refresh();
-    }
-    placeWorker(playerNumber, wheel, spaceNumber, godMode) {
-        //Place the worker that is requested by the user
-        //Perform differently in god and not god mode
-        //Place the worker
-        if (godMode) {
-            this[wheel][spaceNumber] = playerNumber;
-            return new Return(true);
-        }
-        return new Return(false);
     }
     godPickupTile(spaceNumber, type) {
         //Pickup either a wood or a corn tile

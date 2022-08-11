@@ -643,12 +643,11 @@ class TzolkinGame {
         if (this.turn === this.firstPlayer) {
             //Check if starting player space taken - to check double advance
             if (this.firstPlayerSpace !== -1) {
-
-
+                
             }
 
         } else {
-            //Finish by setting the calc for the next players turn
+            //If the round is not over, push to the next players turn
             this.calculationStack.push({ name: "turnStart" })
         }
     }
@@ -694,7 +693,7 @@ class TzolkinGame {
     }
 
     //GOD FUNCTIONS
-    //Each should start with a check - throw & end with a refresh
+    //Each should start with a check/throw & end with a refresh
 
     godModeToggle() {
         //Toggles on and off god mode; saves a copy of the modified game
@@ -733,17 +732,6 @@ class TzolkinGame {
             this.firstPlayerSpace = -1
         }
         this.refresh()
-    }
-
-    placeWorker(playerNumber: number, wheel: Wheel, spaceNumber: number, godMode: boolean): Return {
-        //Place the worker that is requested by the user
-        //Perform differently in god and not god mode
-        //Place the worker
-        if (godMode) {
-            this[wheel][spaceNumber] = playerNumber
-            return new Return(true)
-        }
-        return new Return(false)
     }
 
     godPickupTile(spaceNumber: number, type: "w" | "c") {
