@@ -171,7 +171,7 @@ class Player {
     wood: number
     stone: number
     gold: number
-    doubleAdvance: boolean
+    doubleAdvance: boolean //true if wheel double advance is avaliable
 
     constructor(id: number, color: string) {
         this.id = id
@@ -815,6 +815,12 @@ class TzolkinGame {
         this.refresh()
     }
 
+    godTogglePlayerDoubleAdvance(playerNumber: number) {
+        if (this.godMode === false) { throw "godMode not enabled" }
+        this.players[playerNumber].doubleAdvance = !this.players[playerNumber].doubleAdvance
+        this.refresh()
+    }
+
 }
 
 class Refreshable {
@@ -1040,6 +1046,28 @@ class ResourcesSpace extends TileBase {
     }
     setCount(value: number) {
         this.game.godSetPlayerResourceValue(this.playerNumber, this.resource, value)
+    }
+}
+
+class DoubleAdvanceSpace extends TileBase {
+    playerNumber: number
+    constructor(game: TzolkinGame, parentDom: HTMLSpanElement, playerNumber: number) {
+        //Space for showing if the player can advance the wheel twice
+        super(game, parentDom, "", "x2 Avaliable")
+        this.playerNumber = playerNumber
+        this.dom.onclick = () => {
+            if (game.godMode) {
+                this.game.godTogglePlayerDoubleAdvance(this.playerNumber)
+            }
+        }
+    }
+    refresh(): void {
+        super.refresh()
+        if (this.game.players[this.playerNumber].doubleAdvance === true) {
+            this.setTopText("yes")
+        } else {
+            this.setTopText("no")
+        }
     }
 }
 
@@ -1302,7 +1330,7 @@ class PlayerDOM extends Refreshable {
         new ResourcesSpace(game, area, playerNumber, "wood", "wood", "wood", "wood-color")
         new ResourcesSpace(game, area, playerNumber, "stone", "stone", "stone", "stone-color")
         new ResourcesSpace(game, area, playerNumber, "gold", "gold", "gold", "gold-color")
-        // new ResourcesSpace(game, area, playerNumber, "")
+        new DoubleAdvanceSpace(game, area, playerNumber)
         //Setup religion and technology area
         area = this.dom.getElementsByClassName("TECHNOLOGY")[0] as HTMLSpanElement
         new TrackSpace(game, area, playerNumber, "religion", 0,

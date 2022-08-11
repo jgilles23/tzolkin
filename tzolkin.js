@@ -697,6 +697,13 @@ class TzolkinGame {
         this[informationName] = value;
         this.refresh();
     }
+    godTogglePlayerDoubleAdvance(playerNumber) {
+        if (this.godMode === false) {
+            throw "godMode not enabled";
+        }
+        this.players[playerNumber].doubleAdvance = !this.players[playerNumber].doubleAdvance;
+        this.refresh();
+    }
 }
 class Refreshable {
     constructor(game) {
@@ -904,6 +911,27 @@ class ResourcesSpace extends TileBase {
     }
     setCount(value) {
         this.game.godSetPlayerResourceValue(this.playerNumber, this.resource, value);
+    }
+}
+class DoubleAdvanceSpace extends TileBase {
+    constructor(game, parentDom, playerNumber) {
+        //Space for showing if the player can advance the wheel twice
+        super(game, parentDom, "", "x2 Avaliable");
+        this.playerNumber = playerNumber;
+        this.dom.onclick = () => {
+            if (game.godMode) {
+                this.game.godTogglePlayerDoubleAdvance(this.playerNumber);
+            }
+        };
+    }
+    refresh() {
+        super.refresh();
+        if (this.game.players[this.playerNumber].doubleAdvance === true) {
+            this.setTopText("yes");
+        }
+        else {
+            this.setTopText("no");
+        }
     }
 }
 class TrackSpace extends TileBase {
@@ -1156,7 +1184,7 @@ class PlayerDOM extends Refreshable {
         new ResourcesSpace(game, area, playerNumber, "wood", "wood", "wood", "wood-color");
         new ResourcesSpace(game, area, playerNumber, "stone", "stone", "stone", "stone-color");
         new ResourcesSpace(game, area, playerNumber, "gold", "gold", "gold", "gold-color");
-        // new ResourcesSpace(game, area, playerNumber, "")
+        new DoubleAdvanceSpace(game, area, playerNumber);
         //Setup religion and technology area
         area = this.dom.getElementsByClassName("TECHNOLOGY")[0];
         new TrackSpace(game, area, playerNumber, "religion", 0, ["-1p", "0p", "2p s", "4p", "6p s", "7p", "8p *"], "religion-0-color");
