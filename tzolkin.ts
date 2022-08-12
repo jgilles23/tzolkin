@@ -332,8 +332,8 @@ class TzolkinGame {
         //If ui is null, the game will not display
         //If storage is null, the game will not save
         this.P = new Array<number>(10).fill(-1)
-        this.PCorn = new Array<number>(8).fill(0)
-        this.PWood = new Array<number>(8).fill(0)
+        this.PCorn = new Array<number>(10).fill(0)
+        this.PWood = new Array<number>(10).fill(0)
         for (let i = 2; i <= 5; i++) {
             this.PWood[i] = 2
         }
@@ -352,7 +352,7 @@ class TzolkinGame {
         this.firstPlayer = 0
         this.firstPlayerSpace = -1
         this.players = [
-            new Player(0, "IndianRed"),
+            new Player(0, "pink"),
             new Player(1, "SteelBlue")
         ]
         //Display and calculate
@@ -643,9 +643,8 @@ class TzolkinGame {
         if (this.turn === this.firstPlayer) {
             //Check if starting player space taken - to check double advance
             if (this.firstPlayerSpace !== -1) {
-                
-            }
 
+            }
         } else {
             //If the round is not over, push to the next players turn
             this.calculationStack.push({ name: "turnStart" })
@@ -910,6 +909,14 @@ class WheelSpace extends TileBase {
         } else {
             this.dom.style.backgroundColor = this.game.players[player].color
         }
+    }
+}
+
+class WheelSpaceEnd extends WheelSpace {
+    //End wheel space that only carries workers, cannot be placed there
+    constructor(game: TzolkinGame, parentDom: HTMLSpanElement, wheel: Wheel, spaceNumber: number) {
+        super(game, parentDom, wheel, spaceNumber, "")
+        this.setTopText("-")
     }
 }
 
@@ -1384,10 +1391,11 @@ class UIHandler {
         //Build wheel P
         area = this.dom.getElementsByClassName("P-WHEEL-INPUT")[0] as HTMLSpanElement
         rewards = ["", "3c", "4c", "5c/2w", "7c/3w", "9c/4w", "~", "~"]
-        let PWoodVisibility = [false, false, false, true, true, true, false, false]
-        let PCornVisibility = [false, false, true, true, true, true, false, false]
-        for (i = 0; i <= 7; i++) {
-            new WheelSpace(game, area, "P", i, rewards[i])
+        let PWoodVisibility = [false, false, false, true, true, true, false, false, false, false]
+        let PCornVisibility = [false, false, true, true, true, true, false, false, false, false]
+        for (i = 0; i <= 9; i++) {
+            if (i <= 7) { new WheelSpace(game, area, "P", i, rewards[i]) }
+            else { new WheelSpaceEnd(game, area, "P", i) }
             new ResourceTile(game, area, i, "c", PCornVisibility[i])
             new ResourceTile(game, area, i, "w", PWoodVisibility[i])
         }
@@ -1397,24 +1405,31 @@ class UIHandler {
         for (i = 0; i <= 7; i++) {
             new WheelSpace(game, area, "Y", i, rewards[i])
         }
+        new WheelSpaceEnd(game, area, "Y", 8)
+        new WheelSpaceEnd(game, area, "Y", 9)
         //Build Wheel T
         area = this.dom.getElementsByClassName("T-WHEEL-INPUT")[0] as HTMLSpanElement
         rewards = ["", ">", "B", ">>", "2B/M", "x:2R", "~", "~"]
         for (i = 0; i <= 7; i++) {
             new WheelSpace(game, area, "T", i, rewards[i])
         }
+        new WheelSpaceEnd(game, area, "T", 8)
+        new WheelSpaceEnd(game, area, "T", 9)
         //Build Wheel U
         area = this.dom.getElementsByClassName("U-WHEEL-INPUT")[0] as HTMLSpanElement
         rewards = ["", "3c:R", "trade", "wkr", "2c:x B", "1c:any", "~", "~"]
         for (i = 0; i <= 7; i++) {
             new WheelSpace(game, area, "U", i, rewards[i])
         }
+        new WheelSpaceEnd(game, area, "U", 8)
+        new WheelSpaceEnd(game, area, "U", 9)
         //Build Wheel C
         area = this.dom.getElementsByClassName("C-WHEEL-INPUT")[0] as HTMLSpanElement
         rewards = ["", "4p R0", "5p R0", "6p R0", "7p R1", "8p R1", "8p R1 x", "9p R2", "11p R2 x", "13p R2 x", "~"]
-        let CSkullVisible = [false, true, true, true, true, true, true, true, true, true, false]
-        for (i = 0; i <= 10; i++) {
-            new WheelSpace(game, area, "C", i, rewards[i])
+        let CSkullVisible = [false, true, true, true, true, true, true, true, true, true, false, false, false]
+        for (i = 0; i <= 12; i++) {
+            if (i <= 10) { new WheelSpace(game, area, "C", i, rewards[i]) }
+            else { new WheelSpaceEnd(game, area, "C", i) }
             new SkullSpace(game, area, i, CSkullVisible[i])
         }
         //Build the Building area
@@ -1479,6 +1494,5 @@ clearAllButton.onclick = () => {
     game = new TzolkinGame(ui, storage)
     ui.setGame(game)
     console.log("Local storage cleared and new game started.")
-    storage.load(game)
     game.refresh()
 }
