@@ -39,7 +39,7 @@ type Pairs = Array<[number | undefined, number, BuildingResourceName]>
 type Tuple = [Wheel, Array<number>, number] //[wheel name, wheel, lastSpot]
 //The calculation types that can be added to the calculation stack
 type CalculationTypes = CalculationTurnStart | CalculationPickup | CalculationChooseAction | CalculationPlace |
-    CalculateBegReligion
+    CalculateBegReligion | CalculateOneTwo
 interface Calculation {
     name: string;
 }
@@ -61,6 +61,10 @@ interface CalculationChooseAction extends Calculation {
 }
 interface CalculateBegReligion extends Calculation {
     name: "begReligion"
+}
+
+interface CalculateOneTwo extends Calculation {
+    name: "spinOneTwo"
 }
 
 //Base variables
@@ -316,6 +320,8 @@ class TzolkinGame {
     turn: number //Player number who is active
     firstPlayer: number //Which is the first player
     firstPlayerSpace: number //Who is in the first player space (-1 if no one)
+    resourceDay: boolean //Is this a day where players get resources
+    pointsDay: boolean //Is this a day where players get points
     //Player specific items
     players: Array<Player>
     //UI & storage - not saved in LocalStorage
@@ -351,6 +357,8 @@ class TzolkinGame {
         this.turn = 0
         this.firstPlayer = 0
         this.firstPlayerSpace = -1
+        this.resourceDay = false
+        this.pointsDay = false
         this.players = [
             new Player(0, "IndianRed"),
             new Player(1, "SteelBlue")
@@ -605,6 +613,17 @@ class TzolkinGame {
         }
     }
 
+    calcSpinOneTwo() {
+        //This calculation gives the player the choice between sprinning the
+        //wheel once or twice
+        this.actions["spinOne"] = () => {
+            this.performAdvanceCalendar(1)
+        }
+        this.actions["spinTwo"] = () => {
+            this.performAdvanceCalendar(2)
+        }
+    }
+
     calcChooseAction(wheel: Wheel, pos: number) {
         console.log("TODO Choose Action not yet implemented.")
     }
@@ -641,11 +660,21 @@ class TzolkinGame {
         this.turn = (this.turn + 1) % this.players.length
         //Check if it is the end of the year
         if (this.turn === this.firstPlayer) {
-            //Check if starting player space taken - to check double advance
+            //Check if starting player space taken
             if (this.firstPlayerSpace !== -1) {
+                //Starting player space is taken
+                if (this.players[this.firstPlayerSpace].doubleAdvance === true && 
+                    this.P[6] < 0 && this.Y[6] < 0 && this.T[6] && 
+                    this.U[6] < 0 && this.C[9] < 0) {
+                        //Player has the ability to double advance
+                        //And no one would be pushed off the wheel by a double advance
+                        this.calculationStack.push({name:"spinOneTwo"})
+                }
+                //Select the new starting player
                 
-            }
+            } else {
 
+            }
         } else {
             //If the round is not over, push to the next players turn
             this.calculationStack.push({ name: "turnStart" })
@@ -689,7 +718,18 @@ class TzolkinGame {
                     wheel[lengthOccupiable] = -1
                 }
             }
+            //Check if it is a food or a points day and change the appropopriate flag
+            if (this.round === 8 || this.round === 21) {
+                this.resourceDay = true
+            }
+            if (this.round === 14 || this.round === 27) {
+                this.pointsDay = true
+            }
         }
+        //After spinning set the turn to the first player
+        this.turn = this.firstPlayer
+        //Once spinning the wheel is done, give control back to the player to start a turn
+        this.calculationStack.push({name: "turnStart"})
     }
 
     //GOD FUNCTIONS
@@ -1368,6 +1408,8 @@ class UIHandler {
         new SpecialAction(game, area, "Pickup Workers", "pickup")
         new SpecialAction(game, area, "Beg for Corn", "beg")
         new SpecialAction(game, area, "End Turn", "end")
+        new SpecialAction(game, area, "Spin Once", "spinOne")
+        new SpecialAction(game, area, "Spin Twice", "spinTwo")
         let placeHolder = new SpecialAction(game, area, "!", "!") //Place holder
         placeHolder.dom.style.visibility = "hidden"
         placeHolder.refresh = () => { } //Should not refresh (aka stay hidden)
