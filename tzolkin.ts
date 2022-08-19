@@ -12,6 +12,7 @@ type Wheel = "P" | "Y" | "T" | "U" | "C"
 type PlayerValueDirect = "score" | "workersTotal" | "workersFree" | "corn" | "skulls" | "wood" | "stone" | "gold"
 type PlayerValueIndexed = "religion" | "technology"
 type InformationValue = "skulls" | "bribe" | "round" | "turn" | "firstPlayer"
+type BooleanProperty = "resourceDay" | "pointsDay"
 //Action types
 type Actions = { [index: string]: () => void }
 //Building costs & reqards
@@ -166,7 +167,7 @@ class Player {
     color: string //Some way to represent the color of the player
     religion: Array<number> //By track, 0 is the negative space, 1 is starting
     technology: Array<number> //By track, 0 is starting position
-    buildings: Array<unknown> //Array of buildings
+    buildings: Array<number> //Array of buildings
     score: number
     workersTotal: number
     workersFree: number
@@ -291,6 +292,24 @@ class Building {
             return false
         }
     }
+
+    rewardFreeWorkers(): number {
+        //Returns the number of free workers that are awarded by this building
+        if (this.rewards.freeWorkers !== undefined) {
+            return this.rewards.freeWorkers
+        } else {
+            return 0
+        }
+    }
+
+    rewardDiscountWorkers(): number {
+        //Returns the number of discounts on workers that are awarded by this building
+        if (this.rewards.workerDiscount !== undefined) {
+            return this.rewards.workerDiscount
+        } else {
+            return 0
+        }
+    }
 }
 
 let allBuildings = [
@@ -353,7 +372,7 @@ class TzolkinGame {
         this.monuments = []
         this.buildings = [0, 1, 2, 3, 4, 5]
         this.bribe = 0
-        this.round = 1
+        this.round = 1 //Round is indexed from one!
         this.turn = 0
         this.firstPlayer = 0
         this.firstPlayerSpace = -1
@@ -660,20 +679,162 @@ class TzolkinGame {
         this.turn = (this.turn + 1) % this.players.length
         //Check if it is the end of the year
         if (this.turn === this.firstPlayer) {
+            //make a flag for auto spinning the wheel at the end of the turn
+            let spinWithoutChoice: boolean
             //Check if starting player space taken
-            if (this.firstPlayerSpace !== -1) {
+            if (this.firstPlayerSpace >= 0) {
                 //Starting player space is taken
-                if (this.players[this.firstPlayerSpace].doubleAdvance === true && 
-                    this.P[6] < 0 && this.Y[6] < 0 && this.T[6] && 
+                if (this.players[this.firstPlayerSpace].doubleAdvance === true &&
+                    this.P[6] < 0 && this.Y[6] < 0 && this.T[6] &&
                     this.U[6] < 0 && this.C[9] < 0) {
-                        //Player has the ability to double advance
-                        //And no one would be pushed off the wheel by a double advance
-                        this.calculationStack.push({name:"spinOneTwo"})
+                    //Player has the ability to double advance
+                    //And no one would be pushed off the wheel by a double advance
+                    this.calculationStack.push({ name: "spinOneTwo" })
+                    spinWithoutChoice = false
+                } else {
+                    spinWithoutChoice = true
                 }
                 //Select the new starting player
-                
+                if (this.firstPlayer !== this.firstPlayerSpace) {
+                    this.firstPlayer = this.firstPlayerSpace
+                } else {
+                    this.firstPlayer = (this.firstPlayer + 1) % this.players.length
+                }
+                //Award the bribe ot the firstPlayerSpace taker
+                this.players[this.firstPlayerSpace].corn += this.bribe
+                this.bribe = 0
+                //Spin the wheel if the player doesn't get a choice
             } else {
+                //No one has chosen first player, normal spin
+                spinWithoutChoice = true
+            }
+            //Perform end of year bonuses
+            //Resource days
+            if (this.resourceDay === true) {
+                for (let i = 0; i < this.players.length; i++) {
+                    let player = this.players[i]
+                    //Income on resource days
+                    if (player.religion[0] >= 2) {
+                        player.stone += 1
+                    }
+                    if (player.religion[0] >= 4) {
+                        player.stone += 1
+                    }
+                    if (player.religion[1] >= 3) {
+                        player.gold += 1
+                    }
+                    if (player.religion[1] >= 5) {
+                        player.gold += 1
+                    }
+                    if (player.religion[2] >= 2) {
+                        player.wood += 1
+                    }
+                    if (player.religion[2] >= 4) {
+                        player.wood += 1
+                    }
+                    if (player.religion[2] >= 5) {
+                        player.skulls += 1
+                    }
+                }
+            }
+            //Points days
+            if (this.pointsDay === true) {
+                //Points days
+                let playersByReligionLevel: Array<Array<Array<number>>> = [
+                    [[], [], [], [], [], [], [],],
+                    [[], [], [], [], [], [], [], [], [],],
+                    [[], [], [], [], [], [], [], [],]]
+                for (let i = 0; i < this.players.length; i++) {
+                    //Cylce through each player
+                    let player = this.players[i]
+                    //Income on resource days
+                    if (this.resourceDay === true) {
 
+                    }
+                    //Points on points days
+                    if (this.pointsDay === true) {
+                        //Points on points days
+                        player.score += [-1, 0, 2, 4, 6, 7, 8][player.religion[0]] //RA
+                        player.score += [-2, 0, 1, 2, 4, 6, 9, 12, 13][player.religion[1]] //RB
+                        player.score += [-3, 0, 1, 3, 5, 7, 9, 10][player.religion[2]] //RC
+                        for (let r = 0; r < 3; r++) {
+                            //Cycle throgh religions place the player in the religion track
+                            playersByReligionLevel[r][player.religion[r]].push(i) //player number
+                        }
+                    }
+                }
+                //Award bonus points function
+                let award = (track: Array<Array<number>>, points: number) => {
+                    for (let j = track.length - 1; j >= 0; j--) {
+                        //Iterate down through the track
+                        if (track[j].length === 1) {
+                            //Found a player in the highest spot
+                            this.players[track[j][0]].score += points
+                            //Break the iteration
+                            break
+                        } else if (track[j].length > 1) {
+                            //found multiple players in the highest spot
+                            //They each get half points
+                            for (let playerNumber of track[j]) {
+                                this.players[playerNumber].score += points / 2
+                            }
+                            //break the iteration
+                            break
+                        }
+                    }
+                }
+                //Actually award the bonus points
+                if (this.round >= 27) {
+                    //End of game points
+                    award(playersByReligionLevel[0], 2)
+                    award(playersByReligionLevel[1], 6)
+                    award(playersByReligionLevel[2], 4)
+                } else {
+                    //Mid-game points
+                    award(playersByReligionLevel[0], 6)
+                    award(playersByReligionLevel[1], 2)
+                    award(playersByReligionLevel[2], 4)
+                }
+            }
+            //Players must feed their workers
+            for (let i = 0; i < this.players.length; i++) {
+                console.log("feeding player", i)
+                let player = this.players[i]
+                let workersToFeed = player.workersTotal
+                let costPerWorker = 2
+                //Apply building discounts
+                for (let buildingNumber of player.buildings) {
+                    let building: Building = allBuildings[buildingNumber]
+                    workersToFeed -= building.rewardFreeWorkers()
+                    costPerWorker -= building.rewardDiscountWorkers()
+                }
+                //Check if workers need to be fed
+                if (workersToFeed <= 0 || costPerWorker <= 0) {
+                    //No feeding required
+                } else {
+                    //Feed the workers
+                    while (workersToFeed > 0) {
+                        if (player.corn >= costPerWorker) {
+                            //Feed the worker corn
+                            player.corn -= costPerWorker
+                        } else {
+                            //Feed the worker points
+                            player.score -= 3
+                        }
+                        workersToFeed -= 1
+                    }
+                }
+            }
+            //Clear end of year bonuses
+            this.resourceDay = false
+            this.pointsDay = false
+            //End the game if the game is over
+            if (this.round >= 27) {
+                throw ("TODO: write end of game code")
+            }
+            //Spin the wheel if no player has a choice
+            if (spinWithoutChoice === true) {
+                this.performAdvanceCalendar(1)
             }
         } else {
             //If the round is not over, push to the next players turn
@@ -718,6 +879,8 @@ class TzolkinGame {
                     wheel[lengthOccupiable] = -1
                 }
             }
+            //Increace the round number
+            this.round += 1
             //Check if it is a food or a points day and change the appropopriate flag
             if (this.round === 8 || this.round === 21) {
                 this.resourceDay = true
@@ -729,7 +892,7 @@ class TzolkinGame {
         //After spinning set the turn to the first player
         this.turn = this.firstPlayer
         //Once spinning the wheel is done, give control back to the player to start a turn
-        this.calculationStack.push({name: "turnStart"})
+        this.calculationStack.push({ name: "turnStart" })
     }
 
     //GOD FUNCTIONS
@@ -740,6 +903,18 @@ class TzolkinGame {
         if (game.godMode) {
             //Turn god mode off
             this.godMode = false
+            //Recalculate the total workers for each player
+            for (let player of game.players) {
+                player.workersTotal = player.workersFree
+            }
+            //Count workers that are on the wheels
+            for (let [wheelName, wheel, lastSpot] of this.getWheels()) {
+                for (let i = 0; i < wheel.length; i++) {
+                    if (wheel[i] >= 0) {
+                        this.players[wheel[i]].workersTotal += 1
+                    }
+                }
+            }
             //Recalculate the actions
             game.calculate()
         } else {
@@ -830,10 +1005,10 @@ class TzolkinGame {
         this.refresh()
     }
 
-    godSetPlayerResourceValue(playerNumber: number, resouce: PlayerValueDirect, value: number) {
+    godSetPlayerResourceValue(playerNumber: number, resource: PlayerValueDirect, value: number) {
         //Set a player resource value
         if (this.godMode === false) { throw "godMode not enabled" }
-        this.players[playerNumber][resouce] = value
+        this.players[playerNumber][resource] = value
         this.refresh()
     }
 
@@ -846,6 +1021,12 @@ class TzolkinGame {
     godTogglePlayerDoubleAdvance(playerNumber: number) {
         if (this.godMode === false) { throw "godMode not enabled" }
         this.players[playerNumber].doubleAdvance = !this.players[playerNumber].doubleAdvance
+        this.refresh()
+    }
+
+    godToggleProperty(property: BooleanProperty) {
+        if (this.godMode === false) { throw "godMode not enabled" }
+        this[property] = !this[property] //Toggle the property
         this.refresh()
     }
 
@@ -1082,6 +1263,28 @@ class ResourcesSpace extends TileBase {
     }
     setCount(value: number) {
         this.game.godSetPlayerResourceValue(this.playerNumber, this.resource, value)
+    }
+}
+
+class BooleanSpace extends TileBase {
+    property: BooleanProperty
+    constructor(game:TzolkinGame, parentDom: HTMLSpanElement, bottomText: string, property: BooleanProperty) {
+        //Spacce for showing a boolean value
+        super(game, parentDom, "", bottomText)
+        this.property = property
+        this.dom.onclick = () => {
+            if (game.godMode) {
+                this.game.godToggleProperty(property)
+            }
+        }
+    }
+    refresh(): void {
+        super.refresh()
+        if (this.game[this.property] === true) {
+            this.setTopText("yes")
+        } else {
+            this.setTopText("no")
+        }
     }
 }
 
@@ -1367,6 +1570,7 @@ class PlayerDOM extends Refreshable {
         new ResourcesSpace(game, area, playerNumber, "stone", "stone", "stone", "stone-color")
         new ResourcesSpace(game, area, playerNumber, "gold", "gold", "gold", "gold-color")
         new DoubleAdvanceSpace(game, area, playerNumber)
+        new ResourcesSpace(game, area, playerNumber, "workersTotal", "total workers", "Total W", "NONE")
         //Setup religion and technology area
         area = this.dom.getElementsByClassName("TECHNOLOGY")[0] as HTMLSpanElement
         new TrackSpace(game, area, playerNumber, "religion", 0,
@@ -1427,6 +1631,8 @@ class UIHandler {
         new InfoSpace(game, area, "firstPlayer", "first player")
         new InfoSpace(game, area, "turn", "player's turn")
         new InfoSpace(game, area, "skulls", "skulls").dom.classList.add("skull-color")
+        new BooleanSpace(game, area, "Res. Day", "resourceDay")
+        new BooleanSpace(game, area, "Pts Day", "pointsDay")
         let firstPlayerSpace = templates.getElementsByClassName("FIRST-PLAYER-NAME")[0] as HTMLDivElement
         area.appendChild(firstPlayerSpace)
         new FirstPlayerSpace(game, area, "first player")
@@ -1537,5 +1743,14 @@ clearAllButton.onclick = () => {
     game = new TzolkinGame(ui, storage)
     ui.setGame(game)
     console.log("Local storage cleared and new game started.")
+    game.refresh()
+}
+
+//Force the calendar to advance
+let advanceCalendarButton = document.getElementById("advance-calendar-button") as HTMLSpanElement
+advanceCalendarButton.onclick = () => {
+    game.calculationStack = [] //Clear the calcultion stack
+    game.performAdvanceCalendar(1)
+    console.log("Calendar advanced.")
     game.refresh()
 }
